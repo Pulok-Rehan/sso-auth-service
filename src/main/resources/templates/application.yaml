@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: ss0-auth-service
+  data:
+    mongodb:
+      uri: mongodb://10.7.93.19:27017/auth
+
+server:
+  port: 9090
+
+app:
+  callback:
+    timeout-seconds: 6000
+
+  jwt:
+    keys-directory: ./jwt-keys
+    expiration-days: 7
+
+  cors:
+    allowed-origins:
+      - http://10.20.242.202:3000
+      - http://localhost:3000
+      - http://localhost:5175
+      - http://172.31.208.1:3000
+
+  totp:
+    secrets-key: abc

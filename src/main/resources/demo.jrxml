@@ -1,0 +1,281 @@
+<!-- Created with Jaspersoft Studio version 7.0.2.final using JasperReports Library version 7.0.2-31532122640f516c6d17238ae0e41a08113d5ac0  -->
+<jasperReport name="deposit" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+    <property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+    <subDataset name="buyData" >
+        <property name="com.jaspersoft.studio.data.defaultdataadapter" value="BEAN_DATA_ADAPTOR"/>
+        <queryString>
+            <![CDATA[]]>
+        </queryString>
+        <field name="market" class="java.lang.String"/>
+        <field name="transactionType" class="java.lang.String"/>
+        <field name="exchange" class="java.lang.String"/>
+        <field name="category" class="java.lang.String"/>
+        <field name="avgRate" class="java.lang.Double"/>
+        <field name="totalQty" class="java.lang.Long"/>
+        <field name="instrumentType" class="java.lang.String"/>
+        <field name="balance" class="java.lang.Double"/>
+        <field name="comm" class="java.lang.Double"/>
+        <field name="amount" class="java.lang.Double"/>
+        <variable name="totalBuy" calculation="Sum" class="java.lang.Double">
+            <variableExpression><![CDATA[$F{amount}]]></variableExpression>
+        </variable>
+        <variable name="addComm" calculation="Sum" class="java.lang.Double">
+            <variableExpression><![CDATA[$F{comm}]]></variableExpression>
+        </variable>
+    </subDataset>
+    <parameter name="TABLE_DATA_SOURCE" class="net.sf.jasperreports.engine.data.JRBeanCollectionDataSource"/>
+    <queryString>
+        <![CDATA[]]>
+    </queryString>
+    <variable name="addComm" class="java.lang.Double"/>
+    <variable name="boId" class="java.lang.String"/>
+    <variable name="clientCode" class="java.lang.String"/>
+    <variable name="branch" class="java.lang.String"/>
+    <variable name="toDate" class="java.lang.String"/>
+    <variable name="fromDate" class="java.lang.String"/>
+    <variable name="address" class="java.lang.String"/>
+    <variable name="phone" class="java.lang.String"/>
+    <variable name="name" class="java.lang.String"/>
+    <variable name="totalBuy" class="java.lang.Double"/>
+    <detail>
+        <band height="802" >
+            <reportElement kind="staticText" uuid="4927934e-179e-4c72-b1d7-c60462303e04" x="100" y="0" width="200" height="16" fontName="SansSerif" fontSize="11.0" bold="true" hTextAlign="Left">
+                <text><![CDATA[BRAC EPL Stock Brokerage Limited.]]></text>
+                <textFieldExpression><![CDATA[$P{clientCode}]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="7c133d5b-9ebd-4539-a939-444b7696717e" x="0" y="81" width="80" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["Client Code: $P{clientCode}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="205ac5ce-2a2d-41e0-bdcc-cd5f333bc634" x="0" y="111" width="80" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["BO ID: $P{boId}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="2d4c8dc6-20f7-43b7-a548-5fbadb72833d" x="0" y="141" width="80" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["Trading Date  : $P{tradingDate}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="9c8f5eec-a67f-4cb9-9836-8673cdd9c6c5" x="210" y="81" width="50" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["Name: $P{name}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="5d79285a-f442-4654-95ac-b2da5371206d" x="210" y="111" width="50" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["Address: $P{address}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="79cd8513-333b-46ee-b9a3-381d821ef628" x="88" y="141" width="40" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["From: $P{from}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="c9e4f19c-d357-4385-8342-fc692c2e6e27" x="237" y="141" width="30" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["To:$P{to}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="21dd2367-f6bf-4364-bddb-05ae3571dd16" x="417" y="81" width="40" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["Phone:$P{phone}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="staticText" uuid="c6169ffe-8d0c-4e43-bedf-f4c42b1bd165" x="381" y="3" width="174" height="14" forecolor="#C7C7C7" bold="true" italic="true">
+                <text><![CDATA[Trade Confirmation Note (Summary)]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="f0ead80c-edfb-4fbe-b603-f101d8318b3c" x="494" y="24" width="60" height="16" bold="true">
+                <text><![CDATA[Office Copy]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="1414f751-8d66-4c77-9b8a-8bff07b45d10" x="100" y="24" width="246" height="14">
+                <text><![CDATA[Symphony(3rd floor),Plot: S.E(F)-9,Road:142,Gulshan]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="a29f74ac-a569-4823-a434-24e7d4fcfa5c" x="1" y="166" width="442" height="14">
+                <text><![CDATA[With reference to your order no, as stated below date, we buy/sale the following instruments.]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="e86bfc5d-91c5-4daa-bc54-f1145536395d" x="100" y="40" width="100" height="14">
+                <text><![CDATA[Avenue, Dhaka-1212]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="679ced11-ab7e-4467-8f65-b65d53ba01df" x="100" y="61" width="50" height="14" fontSize="10.0" bold="true">
+                <textFieldExpression><![CDATA["Branch:$P{branch}"]]></textFieldExpression>
+            </reportElement>
+            <reportElement kind="component" uuid="096523e0-d688-4e75-9285-a6cc354cb911" x="1" y="184" width="554" height="66">
+                <component kind="table">
+                    <datasetRun uuid="3910d295-6b5d-4354-8ed6-a6e31e1ca07c" subDataset="buyData">
+                        <dataSourceExpression><![CDATA[$P{TABLE_DATA_SOURCE}]]></dataSourceExpression>
+                        <returnValue toVariable="addComm" fromVariable="addComm"/>
+                        <returnValue toVariable="totalBuy" fromVariable="totalBuy"/>
+                    </datasetRun>
+                    <column kind="single" uuid="c2615501-f36a-4d81-8a62-1461d2471b95" width="50">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="e2cac031-1049-4963-8c18-c716696754e3" x="0" y="0" width="50" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <text><![CDATA[Market]]></text>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="a9c24bf8-6022-486f-8dfe-d21afc8e9a41" x="0" y="0" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
+                                <variableExpression><![CDATA[$F{market}]]></variableExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column1"/>
+                    </column>
+                    <column kind="single" uuid="17d5e1cc-cf24-4879-966f-ceb7b36658cb" width="50">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="cf1b4dc2-2db6-48be-82cd-06f799b0db33" x="0" y="0" width="50" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <text><![CDATA[Transaction Type]]></text>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="a03e30ab-609d-4182-909a-e649300de635" x="0" y="0" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{transactionType}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column2"/>
+                    </column>
+                    <column kind="single" uuid="1df21d85-369e-4328-b6e3-c467b7d0c4d7" width="51">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="6d6cc242-759a-4f8f-8466-11af06c76ab0" x="0" y="0" width="51" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[Exchange]]></textFieldExpression>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="7d0056da-ee28-40f9-9f26-17c34a254e06" x="0" y="0" width="51" height="30" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{exchange}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column3"/>
+                    </column>
+                    <column kind="single" uuid="282a3bf7-d3a7-4e9d-9d96-3f369f25c074" width="50">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="82fabc1e-2067-47d1-aae2-ab0da627b27d" x="0" y="0" width="50" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[Category]]></textFieldExpression>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="4bb0dec8-8cbc-4737-b237-152e1f6240c8" x="0" y="0" width="50" height="30" hTextAlign="Center" vTextAlign="Middle">
+                                <expression><![CDATA[$F{category}]]></expression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column4"/>
+                    </column>
+                    <column kind="single" uuid="e2e010e4-94df-479c-a688-62d7dd36992c" width="50">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="f88da613-3572-4db6-909f-9a9d7d8c6d4c" x="0" y="0" width="50" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <text><![CDATA[Instrument Name]]></text>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="1676847a-2bc4-491d-b33c-c23cde54ca50" x="0" y="0" width="50" height="30" hTextAlign="Left" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{instrumentType}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column5"/>
+                    </column>
+                    <column kind="single" uuid="915465c0-8590-48a2-a6b8-ae2fc667aa19" width="61">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="6c3332a9-fe7d-4d78-85f5-afca3dc5b560" x="0" y="0" width="61" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <text><![CDATA[Total Qty.]]></text>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="fb140852-ad89-4653-a19c-db936f2bad45" x="0" y="0" width="61" height="30" hTextAlign="Right" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{totalQty}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column6"/>
+                    </column>
+                    <column kind="single" uuid="7551aa5c-25ae-4596-b1dd-ad89098738f5" width="61">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="78cc225a-a4e5-432e-a43a-b76bb0faac74" x="0" y="0" width="61" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[Avg. Rate(Tk.)]]></textFieldExpression>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="3e740282-e1a0-4421-9bee-44bbc3636fe1" x="0" y="0" width="61" height="30" hTextAlign="Right" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{avgRate}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column7"/>
+                    </column>
+                    <column kind="single" uuid="0ba0889a-0dc6-4e1c-a4b3-1fcfdc7afee9" width="59">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="b8667dba-7ac8-4e25-bf9b-0916958c80c8" x="0" y="0" width="59" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[Amount(Tk.)]]></textFieldExpression>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="33dc44ec-6253-4a2e-a733-4069a7cb6a7f" x="0" y="0" width="59" height="30" hTextAlign="Right" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{amount}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column8"/>
+                    </column>
+                    <column kind="single" uuid="8e1e51f9-5a56-4bc8-b99f-4e18d17854df" width="61">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="644b954a-a4e2-41f2-9895-bfa5fb7f8525" x="0" y="0" width="61" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[Comm(Tk.)]]></textFieldExpression>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="d9e38d9c-6a5f-4e61-aa83-07de71f170ee" x="0" y="0" width="61" height="30" hTextAlign="Right" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{comm}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column9"/>
+                    </column>
+                    <column kind="single" uuid="b8ba3ebb-90d2-44ec-be68-4cfa18be8450" width="59">
+                        <columnHeader height="30" rowSpan="1" style="Table_CH">
+                            <reportElement kind="staticText" uuid="0d5aec87-996d-4371-81f5-1d28c61839c8" x="0" y="0" width="59" height="30" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+                                <text><![CDATA[Balance(Tk.)]]></text>
+                            </reportElement>
+                        </columnHeader>
+                        <detailCell height="30" style="Table_TD">
+                            <reportElement kind="textField" uuid="8254003d-5670-4316-a7a5-bdd2758b195f" x="0" y="0" width="59" height="30" hTextAlign="Right" vTextAlign="Middle">
+                                <textFieldExpression><![CDATA[$F{balance}]]></textFieldExpression>
+                            </reportElement>
+                        </detailCell>
+                        <property name="com.jaspersoft.studio.components.table.model.column.name" value="Column10"/>
+                    </column>
+                </component>
+                <property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.VerticalRowLayout"/>
+                <property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
+                <property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>
+                <property name="com.jaspersoft.studio.table.style.detail" value="Table_TD"/>
+            </reportElement>
+            <reportElement kind="staticText" uuid="cef18544-82fd-4fce-9fc9-9c0c4022a5f8" x="355" y="258" width="76" height="14" fontSize="9.0" bold="true">
+                <text><![CDATA[Total Buy(TK.)  :]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="a834b87a-8bd7-4eaf-9440-af98752b0ad4" x="351" y="276" width="80" height="14" fontSize="9.0" bold="true">
+                <text><![CDATA[Add Comm(TK.) :]]></text>
+            </reportElement>
+            <reportElement kind="staticText" uuid="e857ee6e-4306-439c-986d-0da676d704b8" x="297" y="294" width="134" height="14" fontSize="9.0" bold="true">
+                <text><![CDATA[Receivable From Client(TK.) :]]></text>
+            </reportElement>
+            <reportElement kind="line" uuid="c8fcf7b9-a041-46c1-8bfd-e0b69619f605" x="494" y="40" width="61" height="1"/>
+            <reportElement kind="image" uuid="a7bf4cf5-9529-4967-809a-3c8a0a20c51b" x="1" y="3" width="89" height="37">
+                <expression><![CDATA["/home/jaman/Downloads/brokerage.gif"]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="4e2ffb72-8164-4edb-ae84-c14647b1b210" x="441" y="258" width="112" height="14" hTextAlign="Right">
+                <expression><![CDATA[$V{totalBuy}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="bde70d62-4847-48af-9631-6c52e0084421" x="441" y="276" width="112" height="14" hTextAlign="Right">
+                <expression><![CDATA[$V{addComm}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="860f4a61-50eb-4ec8-a5be-329e0541cb34" x="441" y="294" width="112" height="14" hTextAlign="Right">
+                <expression><![CDATA[$V{totalBuy}+$V{addComm}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="5a8540e1-9188-4b63-bbc0-076ce3ae03c0" x="87" y="81" width="106" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{clientCode}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="d2312006-fbd0-4715-93a6-936c5b410485" x="152" y="61" width="100" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{branch}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="914f8b00-5c59-445e-8b3d-a680db406448" x="87" y="111" width="106" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{BOID}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="17cb4d93-73d1-4a16-ad4e-4822aa89b899" x="132" y="141" width="98" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{fromDate}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="154767c6-9870-4519-ba7b-95ec6219bf92" x="271" y="141" width="98" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{toDate}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="8da1f3e4-a6da-4a74-a574-25c75e2390fb" x="269" y="81" width="140" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{name}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="093ae27b-f301-41d0-a167-f024f7d24f5d" x="270" y="111" width="210" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{address}]]></expression>
+            </reportElement>
+            <reportElement kind="textField" uuid="43058dd5-0634-4500-b5b5-c73c6b75774b" x="460" y="81" width="94" height="14" hTextAlign="Left" vTextAlign="Middle">
+                <expression><![CDATA[$V{phone}]]></expression>
+            </reportElement>
+            <property name="com.jaspersoft.studio.unit.height" value="px"/>
+            <property name="com.jaspersoft.studio.layout"/>
+        </band>
+    </detail>
+</jasperReport>

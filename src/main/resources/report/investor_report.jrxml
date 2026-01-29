@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+                                  http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="InvestorReport" pageWidth="842" pageHeight="595" columnWidth="782" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20" uuid="d68d6b6f-82a2-456c-9287-efa6f90f25c0">
+
+    <!-- Fields -->
+    <field name="investorCode" class="java.lang.String"/>
+    <field name="name" class="java.lang.String"/>
+    <field name="middleName" class="java.lang.String"/>
+    <field name="lastName" class="java.lang.String"/>
+    <field name="accountStatus" class="java.lang.String"/>
+    <field name="operationType" class="java.lang.String"/>
+    <field name="productName" class="java.lang.String"/>
+    <field name="address" class="java.lang.String"/>
+    <field name="cityDistrict" class="java.lang.String"/>
+    <field name="stateDivision" class="java.lang.String"/>
+    <field name="country" class="java.lang.String"/>
+    <field name="zipPostal" class="java.lang.String"/>
+    <field name="nationalId" class="java.lang.String"/>
+    <field name="mobile" class="java.lang.String"/>
+    <field name="email" class="java.lang.String"/>
+    <field name="occupation" class="java.lang.String"/>
+    <field name="fatherName" class="java.lang.String"/>
+    <field name="motherName" class="java.lang.String"/>
+    <field name="routingNumber" class="java.lang.String"/>
+    <field name="bankAccountNo" class="java.lang.String"/>
+    <field name="tinNo" class="java.lang.String"/>
+    <field name="birthDate" class="java.lang.String"/>
+    <field name="openDate" class="java.lang.String"/>
+    <field name="branchName" class="java.lang.String"/>
+    <field name="boid" class="java.lang.String"/>
+
+    <!-- Title -->
+    <title>
+        <band height="60">
+            <staticText>
+                <reportElement x="0" y="0" width="782" height="40" uuid="63e45e3e-8106-41f2-a72f-cc96be4495d3"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="20" isBold="true" pdfFontName="Helvetica-Bold"/>
+                </textElement>
+                <text><![CDATA[Investor Information Report]]></text>
+            </staticText>
+        </band>
+    </title>
+
+    <!-- Detail Section -->
+    <detail>
+        <band height="540">
+            <!-- Outer frame -->
+            <frame>
+                <reportElement x="0" y="0" width="782" height="520" backcolor="#f9f9f9" mode="Opaque"/>
+
+                <!-- Section Title -->
+                <staticText>
+                    <reportElement x="0" y="0" width="782" height="25" backcolor="#e6aa12" mode="Opaque" uuid="3c9a292d-21d7-4748-9405-ff4053e3a576"/>
+                    <textElement textAlignment="Left" verticalAlignment="Middle">
+                        <font size="14" isBold="true" pdfFontName="Helvetica-Bold"/>
+                    </textElement>
+                    <text><![CDATA[Personal Details]]></text>
+                </staticText>
+
+                <!-- Text Fields -->
+                <textField><reportElement x="10" y="30" width="762" height="20" uuid="e0d127a6-35d0-4e7f-bd4b-5f1fbd53b1e1"/><textFieldExpression><![CDATA["Investor Code: " + $F{investorCode}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="50" width="762" height="20" uuid="39cfbf1a-347d-4d9f-9e58-2a39eebcfde7"/><textFieldExpression><![CDATA["Full Name: " + $F{name} + " " + $F{middleName} + " " + $F{lastName}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="70" width="762" height="20" uuid="bc528188-bc66-4015-b32b-f14e47001ac9"/><textFieldExpression><![CDATA["DOB: " + $F{birthDate} + " | Open Date: " + $F{openDate}]]></textFieldExpression></textField>
+
+                <staticText>
+                    <reportElement x="0" y="100" width="782" height="25" backcolor="#e6aa12" mode="Opaque" uuid="b3b27965-3ac4-41ea-8b94-b8420eddfba5"/>
+                    <textElement><font size="14" isBold="true"/></textElement>
+                    <text><![CDATA[Contact & Address]]></text>
+                </staticText>
+
+                <textField><reportElement x="10" y="130" width="762" height="20" uuid="24575854-6d79-4e38-8f79-000fecc6b0a5"/><textFieldExpression><![CDATA["Address: " + $F{address} + ", " + $F{cityDistrict} + ", " + $F{stateDivision}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="150" width="762" height="20" uuid="2d57402d-6a36-429e-9c5a-787a1615c9ff"/><textFieldExpression><![CDATA["Country: " + $F{country} + " | Zip: " + $F{zipPostal}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="170" width="762" height="20" uuid="8821059a-f60c-4aa4-9995-cfddc07e60db"/><textFieldExpression><![CDATA["Mobile: " + $F{mobile} + " | Email: " + $F{email}]]></textFieldExpression></textField>
+
+                <staticText>
+                    <reportElement x="0" y="200" width="782" height="25" backcolor="#e6aa12" mode="Opaque" uuid="fe8f3608-bf2c-42ad-a0dc-d4d9e49709f9"/>
+                    <textElement><font size="14" isBold="true"/></textElement>
+                    <text><![CDATA[Account & Other Details]]></text>
+                </staticText>
+
+                <textField><reportElement x="10" y="230" width="762" height="20" uuid="1c9d89fa-b289-4b41-bc5c-4f1d108e3e5c"/><textFieldExpression><![CDATA["Account Status: " + $F{accountStatus} + " | Operation: " + $F{operationType}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="250" width="762" height="20" uuid="1c9b03d6-d470-4a7f-b8e4-c43d63db1438"/><textFieldExpression><![CDATA["Product Name: " + $F{productName} + " | Branch: " + $F{branchName}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="270" width="762" height="20" uuid="243177ef-7c15-45c4-b50f-4de8129371e2"/><textFieldExpression><![CDATA["BO ID: " + $F{boid}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="290" width="762" height="20" uuid="eef6a0f9-4dc7-491b-a19d-111e1b989e0f"/><textFieldExpression><![CDATA["Bank Routing: " + $F{routingNumber} + " | A/C No: " + $F{bankAccountNo}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="310" width="762" height="20" uuid="ae85ad97-c6e3-423b-9bfb-0a4aa7a6cabb"/><textFieldExpression><![CDATA["TIN: " + $F{tinNo} + " | NID: " + $F{nationalId}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="330" width="762" height="20" uuid="d269d87a-3d44-45e3-860c-c3ef3ebeb16a"/><textFieldExpression><![CDATA["Father: " + $F{fatherName} + " | Mother: " + $F{motherName}]]></textFieldExpression></textField>
+                <textField><reportElement x="10" y="350" width="762" height="20" uuid="735b6ae3-8d6e-43b3-94a9-8b1a5a5f4c82"/><textFieldExpression><![CDATA["Occupation: " + $F{occupation}]]></textFieldExpression></textField>
+
+            </frame>
+        </band>
+    </detail>
+</jasperReport>
