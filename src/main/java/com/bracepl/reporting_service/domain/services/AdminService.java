@@ -2,6 +2,9 @@ package com.bracepl.reporting_service.domain.services;
 
 import com.bracepl.reporting_service.adapter.in.entity.Admin;
 import com.bracepl.reporting_service.adapter.out.interfaces.AdminRepository;
+import com.bracepl.reporting_service.adapter.out.interfaces.ModeratorRepository;
+import com.bracepl.reporting_service.adapter.out.interfaces.ParticipantRepository;
+import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
 import com.bracepl.reporting_service.adapter.out.service.OtpClient;
 import com.bracepl.reporting_service.application.dtos.AdminDto;
 import com.bracepl.reporting_service.application.utils.CredentialSecretGenerator;
@@ -36,6 +39,9 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private final AdminRepository adminRepository;
+    private final ParticipantRepository participantRepository;
+    private final ModeratorRepository moderatorRepository;
+    private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
     private final NanoIdGenerator nanoIdGenerator;
 //    private final PublicKeyGenerator publicKeyGenerator;
@@ -174,6 +180,28 @@ public class AdminService {
      */
     public long getTotalAdmins() {
         return adminRepository.count();
+    }
+
+    /**
+     * Get analytics
+     */
+    public AdminDto.AnalyticsResponse getAnalytics() {
+        log.info("Fetching analytics data");
+        long totalAdmins = adminRepository.count();
+        long totalParticipants = participantRepository.count();
+        long totalModerators = moderatorRepository.count();
+        long totalProjects = projectRepository.count();
+        long activeProjects = projectRepository.countByStatusTrue();
+        long totalUsers = totalAdmins + totalParticipants + totalModerators;
+
+        return AdminDto.AnalyticsResponse.builder()
+                .totalAdmins(totalAdmins)
+                .totalParticipants(totalParticipants)
+                .totalModerators(totalModerators)
+                .totalProjects(totalProjects)
+                .activeProjects(activeProjects)
+                .totalUsers(totalUsers)
+                .build();
     }
 
     /**

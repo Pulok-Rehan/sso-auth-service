@@ -116,4 +116,16 @@ public class AdminController {
             return new ServiceResponse("Something went wrong", "500");
         }
     }
+
+    @GetMapping("/analytics")
+    public ServiceResponse getAnalytics() {
+        log.info("GET /api/admin/analytics - Fetching analytics");
+        try {
+            AdminDto.AnalyticsResponse response = adminService.getAnalytics();
+            return new ServiceResponse("Analytics retrieved successfully", response, "200");
+        } catch (Exception e) {
+            log.error("Error fetching analytics", e);
+            return new ServiceResponse("Something went wrong", "500");
+        }
+    }
 }

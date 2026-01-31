@@ -23,6 +23,8 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
     
     boolean existsById(String id);
 
+    long countByStatusTrue();
+
     List<Project> findByCreatedBy(String createdBy);
     Page<Project> findByCreatedBy(String createdBy, Pageable pageable);
 }

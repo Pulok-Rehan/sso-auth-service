@@ -115,4 +115,20 @@ public class AdminDto {
         @NotBlank(message = "Admin ID is required")
         private String id;
     }
+
+    /**
+     * Analytics Response DTO
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AnalyticsResponse {
+        private long totalAdmins;
+        private long totalParticipants;
+        private long totalModerators;
+        private long totalProjects;
+        private long activeProjects;
+        private long totalUsers;
+    }
 }
