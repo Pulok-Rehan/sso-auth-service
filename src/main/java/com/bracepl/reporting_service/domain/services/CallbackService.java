@@ -127,18 +127,18 @@ public class CallbackService {
             long responseTime = System.currentTimeMillis() - startTime;
             
             // Log successful callback
-            logCallback(project.getId(), action, callbackUrl, userId, userEmail,
+            logCallback(project.getNanoId(), action, callbackUrl, userId, userEmail,
                        payload, headers, 200, response, null, true, responseTime);
             
-            log.info("Callback successful for project: {} ({}ms)", project.getId(), responseTime);
+            log.info("Callback successful for project: {} ({}ms)", project.getNanoId(), responseTime);
             
         } catch (Exception e) {
             long responseTime = System.currentTimeMillis() - startTime;
             
-            log.error("Callback failed for project: {}", project.getId(), e);
+            log.error("Callback failed for project: {}", project.getNanoId(), e);
             
             // Log failed callback
-            logCallback(project.getId(), action, callbackUrl, userId, userEmail,
+            logCallback(project.getNanoId(), action, callbackUrl, userId, userEmail,
                        payload, headers, 0, null, e.getMessage(), false, responseTime);
         }
     }
@@ -154,7 +154,7 @@ public class CallbackService {
         
         if (user instanceof Participant) {
             Participant participant = (Participant) user;
-            userMap.put("id", participant.getId());
+            userMap.put("id", participant.getNanoId());
             userMap.put("firstname", participant.getFirstname());
             userMap.put("lastname", participant.getLastname());
             userMap.put("email", participant.getEmail());
@@ -164,7 +164,7 @@ public class CallbackService {
             userMap.put("projects", participant.getProjects());
         } else if (user instanceof Moderator) {
             Moderator moderator = (Moderator) user;
-            userMap.put("id", moderator.getId());
+            userMap.put("id", moderator.getNanoId());
             userMap.put("firstname", moderator.getFirstname());
             userMap.put("lastname", moderator.getLastname());
             userMap.put("email", moderator.getEmail());
@@ -250,9 +250,9 @@ public class CallbackService {
      */
     private String extractUserId(Object user) {
         if (user instanceof Participant) {
-            return ((Participant) user).getId();
+            return ((Participant) user).getNanoId();
         } else if (user instanceof Moderator) {
-            return ((Moderator) user).getId();
+            return ((Moderator) user).getNanoId();
         }
         return null;
     }

@@ -34,7 +34,7 @@ public class ProjectController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} creating project: {}", admin.getId(), request.getName());
+            log.info("Admin {} creating project: {}", admin.getNanoId(), request.getName());
 
             Project project = projectService.createProject(request, admin);
             return new ServiceResponse("Project created successfully", project, "201");
@@ -50,7 +50,7 @@ public class ProjectController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching all projects", admin.getId());
+            log.info("Admin {} fetching all projects", admin.getNanoId());
 
             List<Project> projects = projectService.getAllProjects(admin);
             return new ServiceResponse("Projects retrieved successfully", projects, "200");
@@ -67,7 +67,7 @@ public class ProjectController {
         
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching project: {}", admin.getId(), id);
+            log.info("Admin {} fetching project: {}", admin.getNanoId(), id);
 
             Project project = projectService.getProject(id, admin);
             return new ServiceResponse("Project retrieved successfully", project, "200");
@@ -86,7 +86,7 @@ public class ProjectController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching projects page {}/{}", admin.getId(), offset, limit);
+            log.info("Admin {} fetching projects page {}/{}", admin.getNanoId(), offset, limit);
 
             Page<Project> projectsPage = projectService.getProjectsPage(offset / limit, limit, admin);
             return new ServiceResponse("Projects retrieved successfully", projectsPage, "200");
@@ -104,7 +104,7 @@ public class ProjectController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} updating project: {}", admin.getId(), id);
+            log.info("Admin {} updating project: {}", admin.getNanoId(), id);
 
             Project project = projectService.updateProject(id, request, admin);
             return new ServiceResponse("Project updated successfully", project, "200");
@@ -121,7 +121,7 @@ public class ProjectController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} toggling status for project: {}", admin.getId(), id);
+            log.info("Admin {} toggling status for project: {}", admin.getNanoId(), id);
 
             Project project = projectService.toggleStatus(id, admin);
             return new ServiceResponse("Project status updated successfully", project, "200");
@@ -140,7 +140,7 @@ public class ProjectController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} deleting project: {}", admin.getId(), id);
+            log.info("Admin {} deleting project: {}", admin.getNanoId(), id);
 
             projectService.deleteProject(id, admin);
             return new ServiceResponse("Project deleted successfully", null, "200");

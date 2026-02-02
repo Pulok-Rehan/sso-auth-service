@@ -11,7 +11,9 @@ import java.util.Optional;
 public interface ModeratorRepository extends MongoRepository<Moderator, String> {
     
     Optional<Moderator> findByEmail(String email);
-    
+    Optional<Moderator> findByNanoId(String email);
+    Optional<Moderator> findByNanoIdInAndStatusTrue(String nanoId);
+
     Optional<Moderator> findByEmailAndStatusTrue(String email);
     Optional<Moderator> findByMobileNumberAndStatusTrue(String mobileNumber);
 

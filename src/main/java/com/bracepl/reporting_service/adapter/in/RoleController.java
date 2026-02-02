@@ -38,7 +38,7 @@ public class RoleController {
         
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} creating role for project: {}", admin.getId(), projectId);
+            log.info("Admin {} creating role for project: {}", admin.getNanoId(), projectId);
             
             Project.AllowedRole role = projectService.createRole(projectId, request, admin);
             return new ServiceResponse("Role created successfully", role, "201");
@@ -68,7 +68,7 @@ public class RoleController {
         
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching roles for project: {}", admin.getId(), projectId);
+            log.info("Admin {} fetching roles for project: {}", admin.getNanoId(), projectId);
             
             var project = projectService.getProject(projectId, admin);
             var roles = project.getAllowedRoles();
@@ -114,7 +114,7 @@ public class RoleController {
         
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} updating role {} in project: {}", admin.getId(), roleSlug, projectId);
+            log.info("Admin {} updating role {} in project: {}", admin.getNanoId(), roleSlug, projectId);
             
             Project.AllowedRole role = projectService.updateRole(projectId, roleSlug, request.getName(), admin);
             return new ServiceResponse("Role updated successfully", role, "200");
@@ -140,7 +140,7 @@ public class RoleController {
         
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} deleting role {} from project: {}", admin.getId(), roleSlug, projectId);
+            log.info("Admin {} deleting role {} from project: {}", admin.getNanoId(), roleSlug, projectId);
             
             projectService.deleteRole(projectId, roleSlug, admin);
             return new ServiceResponse("Role deleted successfully", null, "200");
@@ -162,9 +162,10 @@ public class RoleController {
     public ServiceResponse getAllUserTypes(Authentication authentication) {
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching all user types", admin.getId());
+            log.info("Admin {} fetching all user types", admin.getNanoId());
 
             List<String> userTypes = Arrays.stream(UserType.values())
+                    .filter(type -> type != UserType.SUPERADMIN)
                     .map(UserType::getValue)
                     .collect(Collectors.toList());
 
@@ -186,7 +187,7 @@ public class RoleController {
             @RequestParam(required = false) String userId) {
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching roles for project: {}", admin.getId(), projectId);
+            log.info("Admin {} fetching roles for project: {}", admin.getNanoId(), projectId);
 
             var project = projectService.getProject(projectId, admin);
             var roles = project.getAllowedRoles();
@@ -219,7 +220,7 @@ public class RoleController {
             @Valid @RequestBody AssignRoleRequest request) {
         try {
             Admin assigningAdmin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} assigning role {} to user {}", assigningAdmin.getId(), request.getRole(), request.getUserId());
+            log.info("Admin {} assigning role {} to user {}", assigningAdmin.getNanoId(), request.getRole(), request.getUserId());
 
             roleService.assignRole(assigningAdmin, request.getUserId(), request.getUserType(), request.getProjectId(), request.getRole());
 

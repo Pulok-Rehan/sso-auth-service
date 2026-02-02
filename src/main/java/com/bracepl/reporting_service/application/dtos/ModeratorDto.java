@@ -1,6 +1,5 @@
 package com.bracepl.reporting_service.application.dtos;
 
-import com.bracepl.reporting_service.application.model.Moderator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -81,14 +80,15 @@ public class ModeratorDto {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class Response {
         
-        private String id;
+        private String nanoId;
         private String publicKey;
         private String firstname;
         private String lastname;
         private String email;
+        private String mobileNumber;
         private Boolean status;
         private Boolean isVerified;
-        private List<Moderator.ProjectRole> projects;
+        private List<ProjectDto> projects;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
     }

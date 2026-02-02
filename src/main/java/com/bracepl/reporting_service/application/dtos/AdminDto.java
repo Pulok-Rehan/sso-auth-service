@@ -3,7 +3,6 @@ package com.bracepl.reporting_service.application.dtos;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,6 +32,9 @@ public class AdminDto {
         @Email(message = "Invalid email address")
         private String email;
 
+        private String projectId;
+        private String role;
+
     }
 
     /**
@@ -45,14 +47,13 @@ public class AdminDto {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class Response {
         
-        private String id;
-        private String publicKey;
-        private String firstname;
-        private String lastname;
+        private String nanoId;
+//        private String publicKey;
         private String email;
         private String mobileNumber;
         private Boolean status;
         private Boolean isVerified;
+        private List<ProjectDto> projects;
         private Boolean twoFactorEnabled;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;

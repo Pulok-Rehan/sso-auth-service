@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 public class CreateAuthSessionResponse {
     private String id;
     private String projectId;
-    private String role;
+//    private String role;
     private String userType;
     private String secret;
 //    private AuthSessionData authSession;

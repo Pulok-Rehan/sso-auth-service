@@ -15,10 +15,13 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
     Optional<Project> findBySlug(String slug);
     
     Optional<Project> findByIdAndStatusTrue(String id);
+    Optional<Project> findByNanoIdAndStatusTrue(String id);
     Optional<Project> findById(String id);
+    Optional<Project> findByNanoId(String id);
 
     List<Project> findByIdInAndStatusTrue(List<String> ids);
-    
+    List<Project> findByNanoIdInAndStatusTrue(List<String> ids);
+
     boolean existsBySlug(String slug);
     
     boolean existsById(String id);

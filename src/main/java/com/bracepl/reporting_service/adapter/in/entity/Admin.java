@@ -26,13 +26,13 @@ import java.util.List;
 public class Admin {
     
     @Id
-    private String mongoId;
+    private String id;
     
     @Indexed(unique = true)
     private String publicKey; // UUID v4 format (uppercase)
     
     @Indexed(unique = true, sparse = true)
-    private String id; // 8-char NanoID
+    private String nanoId; // 8-char NanoID
     
     private String firstname;
     

@@ -27,7 +27,7 @@ public class LoginAttemptAdminController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} unblocking user: {}", admin.getId(), username);
+            log.info("Admin {} unblocking user: {}", admin.getNanoId(), username);
 
             loginAttemptService.unblock(username, username);
             return new ServiceResponse("User unblocked successfully", null, "200");

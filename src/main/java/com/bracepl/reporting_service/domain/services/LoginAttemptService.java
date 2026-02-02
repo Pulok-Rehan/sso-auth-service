@@ -51,11 +51,8 @@ public class LoginAttemptService {
         attempt.setFailedAttempts(0);
         attempt.setBlocked(false);
         attempt.setLastAttemptAt(LocalDateTime.now());
-
-        if (attempt.isFirstLogin()) {
-            attempt.setFirstLogin(false);
-        }
-
+        // Do NOT automatically set firstLogin to false. 
+        // This should be done only after password reset.
         repository.save(attempt);
     }
 
@@ -70,6 +67,7 @@ public class LoginAttemptService {
     }
 
     public void setFirstTimeLoginFalse(LoginAttempt loginAttempt){
+        loginAttempt.setFirstLogin(false);
         repository.save(loginAttempt);
     }
 

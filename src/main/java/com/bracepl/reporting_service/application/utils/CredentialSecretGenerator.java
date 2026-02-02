@@ -83,6 +83,6 @@ public class CredentialSecretGenerator {
      * @return A 12-character random password
      */
     public static String generateTemporaryPassword() {
-        return generateTemporaryPassword(12);
+        return generateTemporaryPassword(6);
     }
 }

@@ -43,7 +43,7 @@ public class AuthSessionService {
         log.info("Creating auth session for project: {}", request.getProjectId());
 
         // 1. Validate and get project
-        Project project = projectRepository.findByIdAndStatusTrue(request.getProjectId())
+        Project project = projectRepository.findByNanoIdAndStatusTrue(request.getProjectId())
                 .orElseThrow(() -> new NotFoundException("Project not found or inactive"));
 
         // 2. Verify credential secret
@@ -57,14 +57,14 @@ public class AuthSessionService {
 
         // 3. Verify role exists in project's allowed roles
         boolean roleExists = project.getAllowedRoles().stream()
-                .anyMatch(role -> role.getSlug().equals(request.getRole().toLowerCase())
-                        && role.getUserType().equals(request.getUserType()));
+//                .anyMatch(role -> role.getSlug().equals(request.getRole().toLowerCase()) && role.getUserType().equals(request.getUserType()));
+                .anyMatch(role ->role.getUserType().equals(request.getUserType()));
 
-        if (!roleExists) {
-            log.warn("Role {} not found for user type {} in project: {}",
-                    request.getRole(), request.getUserType(), request.getProjectId());
-            throw new BadRequestException("Invalid role for this user type");
-        }
+//        if (!roleExists) {
+//            log.warn("Role {} not found for user type {} in project: {}",
+//                    request.getRole(), request.getUserType(), request.getProjectId());
+//            throw new BadRequestException("Invalid role for this user type");
+//        }
 
         // 4. Generate unique session ID
         String sessionId = generateUniqueSessionId();
@@ -78,7 +78,7 @@ public class AuthSessionService {
         authSession.setId(sessionId);
         authSession.setProjectId(request.getProjectId());
         authSession.setSecret(hashedSecret);
-        authSession.setRole(request.getRole().toLowerCase());
+//        authSession.setRole(request.getRole().toLowerCase());
         authSession.setUserType(request.getUserType());
         authSession.setCreatedAt(LocalDateTime.now());
         authSession.setUpdatedAt(LocalDateTime.now());
@@ -91,7 +91,7 @@ public class AuthSessionService {
         return new CreateAuthSessionResponse(
                         sessionId,
                         request.getProjectId(),
-                        request.getRole().toLowerCase(),
+//                        request.getRole().toLowerCase(),
                         request.getUserType(),
                         plainSecret
                 );

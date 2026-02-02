@@ -75,7 +75,7 @@ public class RoleService {
     }
 
     private void assignRoleToAdmin(String adminId, String projectId, String roleSlug) {
-        Admin admin = adminRepository.findById(adminId)
+        Admin admin = adminRepository.findByNanoId(adminId)
                 .orElseThrow(() -> new NotFoundException("Admin not found"));
 
         if (admin.getProjects() == null) {
@@ -86,7 +86,7 @@ public class RoleService {
     }
 
     private void assignRoleToParticipant(String participantId, String projectId, String roleSlug) {
-        Participant participant = participantRepository.findById(participantId)
+        Participant participant = participantRepository.findByNanoId(participantId)
                 .orElseThrow(() -> new NotFoundException("Participant not found"));
 
         if (participant.getProjects() == null) {
@@ -97,7 +97,7 @@ public class RoleService {
     }
 
     private void assignRoleToModerator(String moderatorId, String projectId, String roleSlug) {
-        Moderator moderator = moderatorRepository.findById(moderatorId)
+        Moderator moderator = moderatorRepository.findByNanoId(moderatorId)
                 .orElseThrow(() -> new NotFoundException("Moderator not found"));
 
         if (moderator.getProjects() == null) {

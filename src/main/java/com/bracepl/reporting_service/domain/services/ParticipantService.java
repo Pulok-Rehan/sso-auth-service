@@ -3,8 +3,11 @@ package com.bracepl.reporting_service.domain.services;
 import com.bracepl.reporting_service.adapter.in.ParticipantController;
 import com.bracepl.reporting_service.adapter.out.interfaces.ParticipantRepository;
 import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
+import com.bracepl.reporting_service.application.dtos.ParticipantDto;
+import com.bracepl.reporting_service.application.dtos.ProjectDto;
 import com.bracepl.reporting_service.application.model.CallbackAction;
 import com.bracepl.reporting_service.application.model.Participant;
+import com.bracepl.reporting_service.application.model.Project;
 import com.bracepl.reporting_service.application.utils.exceptions.ConflictException;
 import com.bracepl.reporting_service.application.utils.exceptions.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Service for admin management of participants
@@ -30,12 +35,28 @@ public class ParticipantService {
     private final ProjectRepository projectRepository;
     private final CallbackService callbackService;
     
-    public List<Participant> getAllParticipants() {
-        return participantRepository.findAll();
+    public List<ParticipantDto.Response> getAllParticipants() {
+        List<Participant> participants = participantRepository.findAll();
+
+        // Collect all project IDs from all participants to fetch projects in bulk
+        List<String> allProjectIds = participants.stream()
+                .filter(participant -> participant.getProjects() != null)
+                .flatMap(participant -> participant.getProjects().stream())
+                .map(Participant.ProjectRole::getProjectId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Fetch projects by NanoID
+        Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(allProjectIds).stream()
+                .collect(Collectors.toMap(Project::getNanoId, Project::getName));
+
+        return participants.stream()
+                .map(participant -> mapToResponseWithProjects(participant, projectNames))
+                .collect(Collectors.toList());
     }
     
     public Participant getParticipant(String id) {
-        return participantRepository.findById(id)
+        return participantRepository.findByNanoId(id)
                 .orElseThrow(() -> new NotFoundException("Participant not found"));
     }
     
@@ -140,5 +161,32 @@ public class ParticipantService {
         
         log.info("Role assigned successfully");
         return updated;
+    }
+
+    private ParticipantDto.Response mapToResponseWithProjects(Participant participant, Map<String, String> projectNames) {
+        List<ProjectDto> projectDtos = new ArrayList<>();
+        if (participant.getProjects() != null) {
+            projectDtos = participant.getProjects().stream()
+                    .map(pr -> ProjectDto.builder()
+                            .projectId(pr.getProjectId())
+                            .projectName(projectNames.getOrDefault(pr.getProjectId(), "Unknown Project"))
+                            .roles(pr.getRoles())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        return ParticipantDto.Response.builder()
+                .nanoId(participant.getNanoId())
+                .publicKey(participant.getPublicKey())
+                .firstname(participant.getFirstname())
+                .lastname(participant.getLastname())
+                .email(participant.getEmail())
+                .mobileNumber(participant.getMobileNumber())
+                .status(participant.getStatus())
+                .isVerified(participant.getIsVerified())
+                .projects(projectDtos)
+                .createdAt(participant.getCreatedAt())
+                .updatedAt(participant.getUpdatedAt())
+                .build();
     }
 }

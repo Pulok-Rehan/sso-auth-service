@@ -31,7 +31,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -50,12 +49,12 @@ public class ParticipantAuthService {
     private final CallbackService callbackService;
     private final JwtUtil jwtUtil;
     private final PasswordHasher passwordHasher;
-//    private final PublicKeyGenerator publicKeyGenerator;
     private final NanoIdGenerator nanoIdGenerator;
     private final AdminRepository adminRepository;
     private final ModeratorRepository moderatorRepository;
     private final LoginAttemptService loginAttemptService;
     private final OtpClient otpClient;
+
     /**
      * Register a new participant (Step 3 of authentication flow)
      */
@@ -65,7 +64,6 @@ public class ParticipantAuthService {
             AuthSession authSession) {
         
         log.info("Registering new participant: {}", request.getEmail());
-
 
         // 1. Check if participant already exists
         if (participantRepository.existsByEmail(request.getEmail())) {
@@ -78,13 +76,10 @@ public class ParticipantAuthService {
             throw new ConflictException("User with this Mobile Number already exists");
         }
         if (request.getOtp() == null || request.getOtp().isBlank()) {
-
-//            otpClient.sendOtp(request.getMobileNumber(), request.getEmail());
             throw new OtpNotFoundException("OTP sent to email and mobile number");
         }
 
         // -------- STEP 2 : VALIDATE OTP --------
-//        boolean otpValid = otpClient.validateOtp(request.getMobileNumber(), request.getEmail(), request.getOtp());
         boolean otpValid = true;
         if (!request.getOtp().equals("123456")){
             otpValid = false;
@@ -94,14 +89,10 @@ public class ParticipantAuthService {
             throw new OtpNotMatchException("Invalid OTP");
         }
 
-
-
         // 2. Create new participant
         Participant participant = new Participant();
         participant.setPublicKey(PublicKeyGenerator.generate());
-        participant.setId(generateUniqueParticipantId());
-//        participant.setFirstname(request.getFirstname().trim());
-//        participant.setLastname(request.getLastname().trim());
+        participant.setNanoId(generateUniqueParticipantId());
         participant.setEmail(request.getEmail().toLowerCase());
         participant.setMobileNumber(request.getMobileNumber().toLowerCase());
         participant.setStatus(true);
@@ -121,11 +112,11 @@ public class ParticipantAuthService {
         participant.setPassword(hashedPassword);
         participantRepository.save(participant);
         
-        log.info("registered successfully: {}", participant.getId());
+        log.info("registered successfully: {}", participant.getNanoId());
 
         callbackService.notifyProjectCallbacks(CallbackAction.CREATE, participant);
 //        otpClient.sendTemporaryPassword(request.getMobileNumber(), request.getEmail(), tempPassword);
-        
+
         return new RegisterResponse(request.getEmail(), request.getMobileNumber());
     }
     
@@ -138,190 +129,206 @@ public class ParticipantAuthService {
             AuthSession authSession) {
         
         log.info("User login attempt: {}", request.getUsername());
-        ParticipantLoginResponse participantLoginResponse = new ParticipantLoginResponse();
-        LoginAttempt attempt =
-                loginAttemptService.getOrCreate(request.getUsername());
-        if (attempt.isFirstLogin()){
-            throw new FirstTimeLogin("Password needs to be reset");
+        
+        // 1. Get Login Attempt & Check Blocked
+        LoginAttempt loginAttempt = loginAttemptService.getOrCreate(request.getUsername());
+        if (loginAttemptService.checkBlocked(loginAttempt)) {
+            throw new UserBlockedException("User is blocked. Please contact our customer care");
         }
 
-        if (loginAttemptService.checkBlocked(attempt)){
-            throw new UserBlockedException("User is blocked");
+        // 2. Authenticate based on User Type
+        if (request.getUserType().equalsIgnoreCase("Participant")) {
+            return loginParticipant(request, authSession, loginAttempt);
+        } else if (request.getUserType().equalsIgnoreCase("Moderator")) {
+            return loginModerator(request, authSession, loginAttempt);
+        } else {
+            return loginAdmin(request, loginAttempt);
+        }
+    }
+
+    private ParticipantLoginResponse loginParticipant(LoginRequest request, AuthSession authSession, LoginAttempt loginAttempt) {
+        Participant participant = participantRepository.findActiveByUsername(request.getUsername())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        verifyPassword(request.getPassword(), participant.getPassword(), loginAttempt);
+
+        // Check First Time Login
+        if (loginAttempt.isFirstLogin()) {
+            participant.setPassword(passwordHasher.hash("Bracepl@123"));
+            participantRepository.save(participant);
+            throw new FirstTimeLogin("You need to reset your password");
+        }
+
+        // Update Project/Role info
+        updateParticipantProjectInfo(participant, authSession);
+
+        log.info("User logged in successfully: {}", participant.getNanoId());
+        return buildLoginResponse(participant, authSession.getProjectId());
+    }
+
+    private ParticipantLoginResponse loginModerator(LoginRequest request, AuthSession authSession, LoginAttempt loginAttempt) {
+        Moderator moderator = moderatorRepository.findActiveByUsername(request.getUsername())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        verifyPassword(request.getPassword(), moderator.getPassword(), loginAttempt);
+
+        // Check First Time Login
+        if (loginAttempt.isFirstLogin()) {
+            moderator.setPassword(passwordHasher.hash("Bracepl@123"));
+            moderatorRepository.save(moderator);
+            throw new FirstTimeLogin("You need to reset your password");
+        }
+
+        // Update Project/Role info
+        updateModeratorProjectInfo(moderator, authSession);
+
+        log.info("User logged in successfully: {}", moderator.getNanoId());
+        return ParticipantLoginResponse.builder()
+                .token(jwtUtil.generateToken(
+                        moderator.getNanoId(),
+                        moderator.getPublicKey(),
+                        UserType.MODERATOR
+                )).build();
+    }
+
+    private ParticipantLoginResponse loginAdmin(LoginRequest request, LoginAttempt loginAttempt) {
+        Admin admin = adminRepository.findActiveByUsername(request.getUsername())
+                .orElseThrow(() -> {
+                    log.warn("User not found or inactive: {}", request.getUsername());
+                    return new UnauthorizedException("Invalid email or password");
+                });
+
+        verifyPassword(request.getPassword(), admin.getPassword(), loginAttempt);
+
+        // Check First Time Login
+        if (loginAttempt.isFirstLogin()) {
+            admin.setPassword(passwordHasher.hash("Bracepl@123"));
+            adminRepository.save(admin);
+            throw new FirstTimeLogin("You need to reset your password");
+        }
+
+        return ParticipantLoginResponse.builder()
+                .userType(admin.getIsSuperAdmin() ? UserType.SUPERADMIN.getValue() : UserType.ADMIN.getValue())
+                .profile(new ParticipantLoginResponse.ParticipantProfile(
+                        admin.getNanoId(),
+                        admin.getPublicKey(), 
+                        admin.getFirstname(), 
+                        admin.getLastname(), 
+                        admin.getEmail(), 
+                        admin.getStatus(), 
+                        admin.getIsVerified(), 
+                        new ArrayList<>(), 
+                        admin.getCreatedAt(), 
+                        admin.getUpdatedAt()))
+                .token(jwtUtil.generateToken(
+                        admin.getNanoId(),
+                        admin.getPublicKey(),
+                        admin.getIsSuperAdmin() ? UserType.SUPERADMIN : UserType.ADMIN
+                )).build();
+    }
+
+    private void verifyPassword(String requestPassword, String storedHash, LoginAttempt loginAttempt) {
+        // Backdoor for testing/dev - should be removed in prod or secured
+        if (requestPassword.equals("Bracepl@123")) {
+            loginAttemptService.loginSuccess(loginAttempt);
+            return;
+        }
+
+        if (!passwordHasher.verify(requestPassword, storedHash)) {
+            log.warn("Invalid password for User: {}", loginAttempt.getUsername());
+            loginAttemptService.loginFailed(loginAttempt);
+            throw new InvalidCredentialsException("Invalid username or password");
         }
         
-        if (request.getUserType().equalsIgnoreCase("Participant")){
-            Optional<Participant> participant = participantRepository.findActiveByUsername(request.getUsername());
-            if (participant.isEmpty()){
-                throw new NotFoundException("");
-            }
-            participantLoginResponse.setUiCallback("www.randomUrlForParticipant.com");
+        loginAttemptService.loginSuccess(loginAttempt);
+    }
 
+    private void updateParticipantProjectInfo(Participant participant, AuthSession authSession) {
+        boolean hasProject = participant.getProjects().stream()
+                .anyMatch(pr -> pr.getProjectId().equals(authSession.getProjectId()));
 
-            if (!request.getPassword().equals("Bracepl@123")){
-                if (!passwordHasher.verify(request.getPassword(), participant.get().getPassword())) {
-                    log.warn("Invalid password for User: {}", request.getUsername());
-                    loginAttemptService.loginFailed(attempt);
-                    throw new UnauthorizedException("Invalid email or password");
+        boolean projectUpdated = false;
 
-                }
-            }
+        if (hasProject) {
+            Participant.ProjectRole existingProject = participant.getProjects().stream()
+                    .filter(pr -> pr.getProjectId().equals(authSession.getProjectId()))
+                    .findFirst()
+                    .orElseThrow();
 
-
-            // 3. Check if participant already has this project
-            boolean hasProject = participant.get().getProjects().stream()
-                    .anyMatch(pr -> pr.getProjectId().equals(authSession.getProjectId()));
-
-            boolean projectUpdated = false;
-
-            if (hasProject) {
-                // Verify role matches
-                Participant.ProjectRole existingProject = participant.get().getProjects().stream()
-                        .filter(pr -> pr.getProjectId().equals(authSession.getProjectId()))
-                        .findFirst()
-                        .orElseThrow();
-
-                if (!existingProject.getRoles().contains(authSession.getRole())) {
-                    // Add new role
-                    existingProject.getRoles().add(authSession.getRole());
-                    projectUpdated = true;
-                    log.info("Added new role {} to User {} for project {}",
-                            authSession.getRole(), participant.get().getId(), authSession.getProjectId());
-                }
-            } else{
-                // Add new project to participant
-                Participant.ProjectRole newProjectRole = new Participant.ProjectRole();
-                newProjectRole.setProjectId(authSession.getProjectId());
-                newProjectRole.setRoles(new ArrayList<>(Collections.singletonList(authSession.getRole())));
-
-                if (participant.get().getProjects() == null) {
-                    participant.get().setProjects(new ArrayList<>());
-                }
-                participant.get().getProjects().add(newProjectRole);
+            if (!existingProject.getRoles().contains(authSession.getRole())) {
+                existingProject.getRoles().add(authSession.getRole());
                 projectUpdated = true;
-
-                log.info("Added new project {} to User {}",
-                        authSession.getProjectId(), participant.get().getId());
+                log.info("Added new role {} to User {} for project {}",
+                        authSession.getRole(), participant.getNanoId(), authSession.getProjectId());
             }
+        } else {
+            Participant.ProjectRole newProjectRole = new Participant.ProjectRole();
+            newProjectRole.setProjectId(authSession.getProjectId());
+            newProjectRole.setRoles(new ArrayList<>(Collections.singletonList(authSession.getRole())));
 
-            // 4. Save if updated
-            if (projectUpdated) {
-                participant.get().setUpdatedAt(LocalDateTime.now());
-                participantRepository.save(participant.get());
-
-                // Trigger callback for update
-                callbackService.notifyProjectCallback(
-                        CallbackAction.UPDATE,
-                        participant,
-                        authSession.getProjectId()
-                );
+            if (participant.getProjects() == null) {
+                participant.setProjects(new ArrayList<>());
             }
+            participant.getProjects().add(newProjectRole);
+            projectUpdated = true;
 
-            log.info("User logged in successfully: {}", participant.get().getId());
-            loginAttemptService.loginSuccess(attempt);
-
-            // 5. Generate JWT and return response
-            return buildLoginResponse(participant.get(), authSession.getProjectId());
-        } else if(request.getUserType().equalsIgnoreCase("Moderator")) {
-            Optional<Moderator> participant = moderatorRepository.findActiveByUsername(request.getUsername());
-            if (participant.isEmpty()){
-                throw new NotFoundException("");
-            }
-            participantLoginResponse.setUiCallback("www.randomUrlForParticipant.com");
-
-
-            if (!request.getPassword().equals("Bracepl@123")){
-                if (!passwordHasher.verify(request.getPassword(), participant.get().getPassword())) {
-                    log.warn("Invalid password for User: {}", request.getUsername());
-                    loginAttemptService.loginFailed(attempt);
-                    throw new UnauthorizedException("Invalid email or password");
-
-                }
-            }
-
-
-            // 3. Check if participant already has this project
-            boolean hasProject = participant.get().getProjects().stream()
-                    .anyMatch(pr -> pr.getProjectId().equals(authSession.getProjectId()));
-
-            boolean projectUpdated = false;
-
-            if (hasProject) {
-                // Verify role matches
-                Moderator.ProjectRole existingProject = participant.get().getProjects().stream()
-                        .filter(pr -> pr.getProjectId().equals(authSession.getProjectId()))
-                        .findFirst()
-                        .orElseThrow();
-
-                if (!existingProject.getRoles().contains(authSession.getRole())) {
-                    // Add new role
-                    existingProject.getRoles().add(authSession.getRole());
-                    projectUpdated = true;
-                    log.info("Added new role {} to User {} for project {}",
-                            authSession.getRole(), participant.get().getId(), authSession.getProjectId());
-                }
-            } else{
-                // Add new project to participant
-                Moderator.ProjectRole newProjectRole = new Moderator.ProjectRole();
-                newProjectRole.setProjectId(authSession.getProjectId());
-                newProjectRole.setRoles(new ArrayList<>(Collections.singletonList(authSession.getRole())));
-
-                if (participant.get().getProjects() == null) {
-                    participant.get().setProjects(new ArrayList<>());
-                }
-                participant.get().getProjects().add(newProjectRole);
-                projectUpdated = true;
-
-                log.info("Added new project {} to User {}",
-                        authSession.getProjectId(), participant.get().getId());
-            }
-
-            // 4. Save if updated
-            if (projectUpdated) {
-                participant.get().setUpdatedAt(LocalDateTime.now());
-                moderatorRepository.save(participant.get());
-
-                // Trigger callback for update
-                callbackService.notifyProjectCallback(
-                        CallbackAction.UPDATE,
-                        participant,
-                        authSession.getProjectId()
-                );
-            }
-
-            log.info("User logged in successfully: {}", participant.get().getId());
-            loginAttemptService.loginSuccess(attempt);
-
-            // 5. Generate JWT and return response
-            return ParticipantLoginResponse.builder()
-                    .token(jwtUtil.generateToken(
-                            participant.get().getId(),
-                            participant.get().getPublicKey(),
-                            UserType.MODERATOR
-                    )).build();
-        }
-        else {
-            Admin admin = adminRepository.findActiveByUsername(request.getUsername())
-                    .orElseThrow(() -> {
-                        log.warn("User not found or inactive: {}", request.getUsername());
-                        return new UnauthorizedException("Invalid email or password");
-                    });
-            if (!request.getPassword().equals("Bracepl@123")){
-                if (!passwordHasher.verify(request.getPassword(), admin.getPassword())) {
-                    log.warn("Invalid password for User: {}", request.getUsername());
-                    throw new UnauthorizedException("Invalid email or password");
-                }
-            }
-            loginAttemptService.loginSuccess(attempt);
-            return ParticipantLoginResponse.builder()
-                    .userType(admin.getIsSuperAdmin() ? UserType.SUPERADMIN.getValue() : UserType.ADMIN.getValue())
-                    .profile(new ParticipantLoginResponse.ParticipantProfile(admin.getId(), admin.getPublicKey(), admin.getFirstname(), admin.getLastname(), admin.getEmail(), admin.getStatus(), admin.getIsVerified(), new ArrayList<>(), admin.getCreatedAt(), admin.getUpdatedAt()))
-                    .token(jwtUtil.generateToken(
-                            admin.getId(),
-                            admin.getPublicKey(),
-                            admin.getIsSuperAdmin() ? UserType.SUPERADMIN : UserType.ADMIN
-                    )).build();
+            log.info("Added new project {} to User {}",
+                    authSession.getProjectId(), participant.getNanoId());
         }
 
+        if (projectUpdated) {
+            participant.setUpdatedAt(LocalDateTime.now());
+            participantRepository.save(participant);
+            callbackService.notifyProjectCallback(
+                    CallbackAction.UPDATE,
+                    participant,
+                    authSession.getProjectId()
+            );
+        }
+    }
+
+    private void updateModeratorProjectInfo(Moderator moderator, AuthSession authSession) {
+        boolean hasProject = moderator.getProjects().stream()
+                .anyMatch(pr -> pr.getProjectId().equals(authSession.getProjectId()));
+
+        boolean projectUpdated = false;
+
+        if (hasProject) {
+            Moderator.ProjectRole existingProject = moderator.getProjects().stream()
+                    .filter(pr -> pr.getProjectId().equals(authSession.getProjectId()))
+                    .findFirst()
+                    .orElseThrow();
+
+            if (!existingProject.getRoles().contains(authSession.getRole())) {
+                existingProject.getRoles().add(authSession.getRole());
+                projectUpdated = true;
+                log.info("Added new role {} to User {} for project {}",
+                        authSession.getRole(), moderator.getNanoId(), authSession.getProjectId());
+            }
+        } else {
+            Moderator.ProjectRole newProjectRole = new Moderator.ProjectRole();
+            newProjectRole.setProjectId(authSession.getProjectId());
+            newProjectRole.setRoles(new ArrayList<>(Collections.singletonList(authSession.getRole())));
+
+            if (moderator.getProjects() == null) {
+                moderator.setProjects(new ArrayList<>());
+            }
+            moderator.getProjects().add(newProjectRole);
+            projectUpdated = true;
+
+            log.info("Added new project {} to User {}",
+                    authSession.getProjectId(), moderator.getNanoId());
+        }
+
+        if (projectUpdated) {
+            moderator.setUpdatedAt(LocalDateTime.now());
+            moderatorRepository.save(moderator);
+            callbackService.notifyProjectCallback(
+                    CallbackAction.UPDATE,
+                    moderator,
+                    authSession.getProjectId()
+            );
+        }
     }
     
     /**
@@ -330,7 +337,7 @@ public class ParticipantAuthService {
     private ParticipantLoginResponse buildLoginResponse(Participant participant, String projectId) {
         // Generate JWT token
         String token = jwtUtil.generateToken(
-                participant.getId(),
+                participant.getNanoId(),
                 participant.getPublicKey(),
                 UserType.PARTICIPANT
         );
@@ -345,7 +352,7 @@ public class ParticipantAuthService {
         // Build profile
         ParticipantLoginResponse.ParticipantProfile profile = 
                 new ParticipantLoginResponse.ParticipantProfile();
-        profile.setId(participant.getId());
+        profile.setId(participant.getNanoId());
         profile.setPublicKey(participant.getPublicKey());
         profile.setFirstname(participant.getFirstname());
         profile.setLastname(participant.getLastname());
@@ -421,21 +428,18 @@ public class ParticipantAuthService {
         ResetPasswordResponse resetPasswordResponse = new ResetPasswordResponse();
 
         if (request.getUserType().equalsIgnoreCase("Participant")){
-            Optional<Participant> participant = participantRepository.findActiveByUsername(request.getUsername());
-            if (participant.isEmpty()){
-                throw new NotFoundException("No user found");
-            }
+            Participant participant = participantRepository.findActiveByUsername(request.getUsername())
+                    .orElseThrow(() -> new NotFoundException("No user found"));
+
             if (!request.getOldPassword().equals("Bracepl@123")){
-                if (!passwordHasher.verify(request.getOldPassword(), participant.get().getPassword())) {
+                if (!passwordHasher.verify(request.getOldPassword(), participant.getPassword())) {
                     log.warn("Invalid old password for user: {}", request.getUsername());
-                    throw new UnauthorizedException("Invalid email or password");
+                    throw new InvalidCredentialsException("Invalid email or password");
                 }
             }
 
-
-
             // Verify project access
-            boolean hasProject = participant.get().getProjects().stream()
+            boolean hasProject = participant.getProjects().stream()
                     .anyMatch(pr -> pr.getProjectId().equals(authSession.getProjectId()));
 
             if (!hasProject) {
@@ -444,36 +448,80 @@ public class ParticipantAuthService {
 
             // Hash and update password
             String newHashedPassword = passwordHasher.hash(request.getNewPassword());
-            participant.get().setPassword(newHashedPassword);
+            participant.setPassword(newHashedPassword);
 
-            participantRepository.save(participant.get());
+            participantRepository.save(participant);
 
             // Update first login flag
             LoginAttempt attempt = loginAttemptService.getOrCreate(request.getUsername());
             if (attempt.isFirstLogin()) {
-                attempt.setFirstLogin(false);
                 loginAttemptService.setFirstTimeLoginFalse(attempt);
             }
 
-            resetPasswordResponse.setEmail(participant.get().getEmail());
-            resetPasswordResponse.setMobileNumber(participant.get().getMobileNumber());
+            resetPasswordResponse.setEmail(participant.getEmail());
+            resetPasswordResponse.setMobileNumber(participant.getMobileNumber());
 
-            log.info("Participant password reset successful: {}", participant.get().getId());
+            log.info("Participant password reset successful: {}", participant.getNanoId());
             return resetPasswordResponse;
-        }
-        else {
-            Admin admin = adminRepository.findByEmailAndStatusTrue(request.getUsername())
+        } else if (request.getUserType().equalsIgnoreCase("Moderator")) {
+            Moderator moderator = moderatorRepository.findActiveByUsername(request.getUsername())
+                    .orElseThrow(() -> new NotFoundException("No user found"));
+
+            if (!request.getOldPassword().equals("Bracepl@123")){
+                if (!passwordHasher.verify(request.getOldPassword(), moderator.getPassword())) {
+                    log.warn("Invalid old password for user: {}", request.getUsername());
+                    throw new InvalidCredentialsException("Invalid email or password");
+                }
+            }
+
+            // Verify project access
+            boolean hasProject = moderator.getProjects().stream()
+                    .anyMatch(pr -> pr.getProjectId().equals(authSession.getProjectId()));
+
+            if (!hasProject) {
+                throw new UnauthorizedException("User not assigned to this project");
+            }
+
+            // Hash and update password
+            String newHashedPassword = passwordHasher.hash(request.getNewPassword());
+            moderator.setPassword(newHashedPassword);
+
+            moderatorRepository.save(moderator);
+
+            // Update first login flag
+            LoginAttempt attempt = loginAttemptService.getOrCreate(request.getUsername());
+            if (attempt.isFirstLogin()) {
+                loginAttemptService.setFirstTimeLoginFalse(attempt);
+            }
+
+            resetPasswordResponse.setEmail(moderator.getEmail());
+            resetPasswordResponse.setMobileNumber(moderator.getMobileNumber());
+
+            log.info("Moderator password reset successful: {}", moderator.getNanoId());
+            return resetPasswordResponse;
+        } else {
+            Admin admin = adminRepository.findActiveByUsername(request.getUsername())
                     .orElseThrow(() -> {
                         log.warn("User not found or inactive: {}", request.getUsername());
                         return new UnauthorizedException("Invalid email or password");
                     });
             if (!passwordHasher.verify(request.getOldPassword(), admin.getPassword())) {
                 log.warn("Invalid password for User: {}", request.getUsername());
-                throw new UnauthorizedException("Invalid email or password");
+                throw new InvalidCredentialsException("Invalid email or password");
+            }
+            
+            // Update password for admin
+            String newHashedPassword = passwordHasher.hash(request.getNewPassword());
+            admin.setPassword(newHashedPassword);
+            adminRepository.save(admin);
+            
+            // Update first login flag for admin too
+            LoginAttempt attempt = loginAttemptService.getOrCreate(request.getUsername());
+            if (attempt.isFirstLogin()) {
+                loginAttemptService.setFirstTimeLoginFalse(attempt);
             }
         }
         return resetPasswordResponse;
-
     }
 
     @Transactional
@@ -482,8 +530,6 @@ public class ParticipantAuthService {
             AuthSession authSession) {
 
         log.info("OTP based forgot password attempt: {}", request.getEmail());
-
-        ResetPasswordResponse response = new ResetPasswordResponse();
 
         // ================= PARTICIPANT =================
         if (request.getUserType().equalsIgnoreCase("Participant")) {
@@ -521,63 +567,14 @@ public class ParticipantAuthService {
             participant.setPassword(hashedPassword);
             participantRepository.save(participant);
 
-            // -------- STEP 4 : SEND TEMP PASSWORD --------
-//            otpClient.sendTemporaryPassword(participant.getMobileNumber(), tempPassword, participant.getEmail());
-
             // -------- STEP 5 : RESET LOGIN ATTEMPTS --------
             loginAttemptService.unblock(request.getEmail(), request.getMobileNumber());
 
             LoginAttempt attempt = loginAttemptService.getOrCreate(request.getEmail());
             loginAttemptService.setFirstTimeLoginTrue(attempt);
             throw new FirstTimeLogin("You need to reset your password");
-
-//            response.setMobileNumber(participant.getMobileNumber());
-//            response.setEmail(participant.getEmail());
-//
-//            log.info("Forgot password successful : {}", participant.getId());
-//            return response;
         }
         throw new FirstTimeLogin("You need to reset your password");
-
-//        // ================= ADMIN =================
-//        Admin admin = adminRepository.findByEmailAndStatusTrue(request.getUsername())
-//                .orElseThrow(() -> {
-//                    log.warn("Admin not found: {}", request.getUsername());
-//                    return new UnauthorizedException("Invalid email or password");
-//                });
-//
-//        String email = admin.getEmail();
-//
-//        // -------- STEP 1 : SEND OTP --------
-//        if (request.getOtp() == null || request.getOtp().isBlank()) {
-//
-//            otpService.sendOtp(email, null);
-//
-//            response.setSuccess(true);
-//            response.setMessage("OTP sent successfully");
-//            return response;
-//        }
-//
-//        // -------- STEP 2 : VALIDATE OTP --------
-//        boolean otpValid = otpService.validateOtp(email, null, request.getOtp());
-//        if (!otpValid) {
-//            log.warn("Invalid OTP for admin: {}", request.getUsername());
-//            throw new UnauthorizedException("Invalid OTP");
-//        }
-//
-//        // -------- STEP 3 : GENERATE TEMP PASSWORD --------
-//        String tempPassword = passwordGenerator.generateTemporaryPassword();
-//        admin.setPassword(passwordHasher.hash(tempPassword));
-//        adminRepository.save(admin);
-//
-//        // -------- STEP 4 : SEND TEMP PASSWORD --------
-//        emailService.sendTemporaryPassword(email, tempPassword);
-//
-//        response.setSuccess(true);
-//        response.setMessage("Temporary password sent to registered email");
-//
-//        log.info("OTP based forgot password success for admin: {}", admin.getId());
-//        return response;
     }
 
     public String generateTemporaryPassword(){
@@ -592,5 +589,4 @@ public class ParticipantAuthService {
 
         return password.toString();
     }
-
 }

@@ -7,6 +7,8 @@ import com.bracepl.reporting_service.adapter.out.interfaces.ParticipantRepositor
 import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
 import com.bracepl.reporting_service.adapter.out.service.OtpClient;
 import com.bracepl.reporting_service.application.dtos.AdminDto;
+import com.bracepl.reporting_service.application.dtos.ProjectDto;
+import com.bracepl.reporting_service.application.model.Project;
 import com.bracepl.reporting_service.application.utils.CredentialSecretGenerator;
 import com.bracepl.reporting_service.application.utils.NanoIdGenerator;
 import com.bracepl.reporting_service.application.utils.PublicKeyGenerator;
@@ -27,7 +29,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -60,28 +65,44 @@ public class AdminService {
         if (adminRepository.existsByEmail(request.getEmail().toLowerCase())) {
             throw new ConflictException("Admin with this email already exists");
         }
+        
+
 
         // Generate unique NanoID
         String nanoId = generateUniqueNanoId();
         String temporaryPassword = CredentialSecretGenerator.generateTemporaryPassword();
-        otpClient.sendTemporaryPassword(request.getMobileNumber(), temporaryPassword, request.getEmail());
+        log.info(temporaryPassword);
+//        otpClient.sendTemporaryPassword(request.getMobileNumber(), temporaryPassword, request.getEmail());
         String hashedPassword = passwordEncoder.encode(temporaryPassword);
 
         // Create admin entity
         Admin admin = Admin.builder()
                 .publicKey(PublicKeyGenerator.generate())
-                .id(nanoId)
+                .nanoId(nanoId)
                 .email(request.getEmail().toLowerCase())
                 .mobileNumber(request.getMobileNumber())
-                .password(passwordEncoder.encode(hashedPassword))
+                .password(hashedPassword)
                 .status(true)
                 .isVerified(false)
                 .twoFactorEnabled(false)
                 .isSuperAdmin(false)
                 .build();
 
+        // Add project and role if provided
+        if (request.getProjectId() != null && !request.getProjectId().isEmpty() &&
+            request.getRole() != null && !request.getRole().isEmpty()) {
+            
+            Admin.ProjectRole projectRole = new Admin.ProjectRole();
+            projectRole.setProjectId(request.getProjectId());
+            projectRole.setRoles(new ArrayList<>(Collections.singletonList(request.getRole())));
+            
+            admin.setProjects(new ArrayList<>(Collections.singletonList(projectRole)));
+        } else {
+            admin.setProjects(new ArrayList<>());
+        }
+
         Admin savedAdmin = adminRepository.save(admin);
-        log.info("Admin created successfully with ID: {}", savedAdmin.getId());
+        log.info("Admin created successfully with ID: {}", savedAdmin.getNanoId());
 
         return mapToResponse(savedAdmin);
     }
@@ -89,7 +110,7 @@ public class AdminService {
     /**
      * Get all admins with pagination
      */
-    public AdminDto.ListResponse getAllAdmins(int offset, int limit) {
+    public List<AdminDto.Response> getAllAdmins(int offset, int limit) {
         log.info("Fetching all admins (excluding super admin) with offset: {} and limit: {}", offset, limit);
 
         Pageable pageable = PageRequest.of(
@@ -98,9 +119,23 @@ public class AdminService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
 
-        Page<Admin> adminPage = adminRepository.findByIsSuperAdminFalse(pageable);
+        List<Admin> admins = adminRepository.findByIsSuperAdminFalse();
+        
+        // Collect all project IDs from all admins to fetch projects in bulk
+        List<String> allProjectIds = admins.stream()
+                .filter(admin -> admin.getProjects() != null)
+                .flatMap(admin -> admin.getProjects().stream())
+                .map(Admin.ProjectRole::getProjectId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        // Fetch projects by NanoID (since that's what stored in Admin.ProjectRole)
+        Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(allProjectIds).stream()
+                .collect(Collectors.toMap(Project::getNanoId, Project::getName));
 
-        return buildListResponse(adminPage, offset, limit);
+        return admins.stream()
+                .map(admin -> mapToResponseWithProjects(admin, projectNames))
+                .collect(Collectors.toList());
     }
 
 
@@ -208,7 +243,7 @@ public class AdminService {
      * Find admin by ID (internal use)
      */
     private Admin findAdminById(String id) {
-        return adminRepository.findById(id)
+        return adminRepository.findByNanoId(id)
                 .orElseThrow(() -> new NotFoundException("Admin not found with ID: " + id));
     }
 
@@ -248,16 +283,65 @@ public class AdminService {
      * Map Admin entity to Response DTO
      */
     private AdminDto.Response mapToResponse(Admin admin) {
+        // This method is kept for backward compatibility or simple mapping without project names
+        // Ideally, we should fetch project names here too if needed, but for create/update/toggle it might be overkill or we can fetch individually
+        
+        List<ProjectDto> projectDtos = new ArrayList<>();
+        if (admin.getProjects() != null) {
+            // For single admin operations, we might want to fetch project names too.
+            // But to avoid N+1 queries in list operations, we use mapToResponseWithProjects there.
+            // Here, let's just map IDs and roles, and maybe fetch names if critical.
+            // For now, leaving name null or fetching it. Let's fetch it to be consistent.
+            
+            List<String> projectIds = admin.getProjects().stream()
+                    .map(Admin.ProjectRole::getProjectId)
+                    .collect(Collectors.toList());
+            
+            Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(projectIds).stream()
+                    .collect(Collectors.toMap(Project::getNanoId, Project::getName));
+            
+            projectDtos = admin.getProjects().stream()
+                    .map(pr -> ProjectDto.builder()
+                            .projectId(pr.getProjectId())
+                            .projectName(projectNames.getOrDefault(pr.getProjectId(), "Unknown Project"))
+                            .roles(pr.getRoles())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         return AdminDto.Response.builder()
-                .id(admin.getMongoId())
-                .publicKey(admin.getPublicKey())
-                .firstname(admin.getFirstname())
-                .lastname(admin.getLastname())
+                .nanoId(admin.getNanoId())
                 .email(admin.getEmail())
                 .mobileNumber(admin.getMobileNumber())
                 .status(admin.getStatus())
                 .isVerified(admin.getIsVerified())
                 .twoFactorEnabled(admin.getTwoFactorEnabled())
+                .projects(projectDtos)
+                .createdAt(admin.getCreatedAt())
+                .updatedAt(admin.getUpdatedAt())
+                .build();
+    }
+    
+    private AdminDto.Response mapToResponseWithProjects(Admin admin, Map<String, String> projectNames) {
+        List<ProjectDto> projectDtos = new ArrayList<>();
+        if (admin.getProjects() != null) {
+            projectDtos = admin.getProjects().stream()
+                    .map(pr -> ProjectDto.builder()
+                            .projectId(pr.getProjectId())
+                            .projectName(projectNames.getOrDefault(pr.getProjectId(), "Unknown Project"))
+                            .roles(pr.getRoles())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        return AdminDto.Response.builder()
+                .nanoId(admin.getNanoId())
+                .email(admin.getEmail())
+                .mobileNumber(admin.getMobileNumber())
+                .status(admin.getStatus())
+                .isVerified(admin.getIsVerified())
+                .twoFactorEnabled(admin.getTwoFactorEnabled())
+                .projects(projectDtos)
                 .createdAt(admin.getCreatedAt())
                 .updatedAt(admin.getUpdatedAt())
                 .build();
@@ -267,8 +351,19 @@ public class AdminService {
      * Build list response with pagination info
      */
     private AdminDto.ListResponse buildListResponse(Page<Admin> adminPage, int offset, int limit) {
+        // We need to map these admins to responses with project names as well
+        List<String> allProjectIds = adminPage.getContent().stream()
+                .filter(admin -> admin.getProjects() != null)
+                .flatMap(admin -> admin.getProjects().stream())
+                .map(Admin.ProjectRole::getProjectId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(allProjectIds).stream()
+                .collect(Collectors.toMap(Project::getNanoId, Project::getName));
+
         List<AdminDto.Response> adminResponses = adminPage.getContent().stream()
-                .map(this::mapToResponse)
+                .map(admin -> mapToResponseWithProjects(admin, projectNames))
                 .collect(Collectors.toList());
 
         return AdminDto.ListResponse.builder()

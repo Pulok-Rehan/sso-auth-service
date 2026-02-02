@@ -41,7 +41,7 @@ public class CredentialController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} creating credential for project: {}", admin.getId(), projectId);
+            log.info("Admin {} creating credential for project: {}", admin.getNanoId(), projectId);
 
             CredentialResponse credential = projectService.createCredential(projectId, request, admin);
             return new ServiceResponse("Credential created successfully", credential, "201");
@@ -60,7 +60,7 @@ public class CredentialController {
         log.info("Resetting credential: {} for project: {}", request.getCredentialId(), request.getProjectId());
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} updating credential for project: {}", admin.getId(), request.getProjectId());
+            log.info("Admin {} updating credential for project: {}", admin.getNanoId(), request.getProjectId());
 
             CredentialResponse credential = projectService.resetCredential(request.getProjectId(), request.getCredentialId(), admin);
             return new ServiceResponse("Credential updated successfully", credential, "200");
@@ -83,7 +83,7 @@ public class CredentialController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching credentials for project: {}", admin.getId(), projectId);
+            log.info("Admin {} fetching credentials for project: {}", admin.getNanoId(), projectId);
 
             // Get project with credentials (and auth check)
             var project = projectService.getProject(projectId, admin);
@@ -124,7 +124,7 @@ public class CredentialController {
         try {
             Admin admin = (Admin) authentication.getPrincipal();
             log.info("Admin {} deleting credential {} from project: {}",
-                    admin.getId(), credentialId, projectId);
+                    admin.getNanoId(), credentialId, projectId);
 
             projectService.deleteCredential(projectId, credentialId, admin);
             return new ServiceResponse("Credential deleted successfully", null, "200");

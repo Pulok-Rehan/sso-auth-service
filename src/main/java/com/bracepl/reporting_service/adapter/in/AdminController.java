@@ -1,5 +1,6 @@
 package com.bracepl.reporting_service.adapter.in;
 
+import com.bracepl.reporting_service.adapter.in.entity.Admin;
 import com.bracepl.reporting_service.application.dtos.AdminDto;
 import com.bracepl.reporting_service.application.model.ServiceResponse;
 import com.bracepl.reporting_service.application.utils.exceptions.*;
@@ -9,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Admin Management Controller
@@ -47,12 +50,12 @@ public class AdminController {
     @GetMapping
     public ServiceResponse getAllAdmins(
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "100") int limit) {
 
         log.info("GET /api/admin - Fetching admins with offset: {} and limit: {}", offset, limit);
 
         try {
-            AdminDto.ListResponse response = adminService.getAllAdmins(offset, limit);
+            List<AdminDto.Response> response = adminService.getAllAdmins(offset, limit);
             return new ServiceResponse("Admins retrieved successfully", response, "200");
         } catch (Exception e) {
             log.error("Error fetching admins", e);

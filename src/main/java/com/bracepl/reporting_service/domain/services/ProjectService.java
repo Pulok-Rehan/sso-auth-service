@@ -6,7 +6,6 @@ import com.bracepl.reporting_service.adapter.in.CredentialController;
 import com.bracepl.reporting_service.adapter.in.entity.Admin;
 import com.bracepl.reporting_service.adapter.out.interfaces.AdminRepository;
 import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
-import com.bracepl.reporting_service.application.dtos.CredentialUpdateDto;
 import com.bracepl.reporting_service.application.model.Project;
 import com.bracepl.reporting_service.application.utils.CredentialSecretGenerator;
 import com.bracepl.reporting_service.application.utils.NanoIdGenerator;
@@ -22,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,10 +46,10 @@ public class ProjectService {
         }
         
         Project project = new Project();
-        project.setId(generateUniqueProjectId());
+        project.setNanoId(generateUniqueProjectId());
         project.setName(request.getName());
         project.setSlug(request.getName().toLowerCase().replace(" ", "-"));
-        project.setCreatedBy(admin.getId());
+        project.setCreatedBy(admin.getNanoId());
         project.setServices(request.getServices());
         project.setCallbacks(request.getCallbacks());
         project.setStatus(true);
@@ -60,18 +58,18 @@ public class ProjectService {
         
         Project saved = projectRepository.save(project);
         this.createCredential(saved, saved.getSlug() + UUID.randomUUID(), request.getSecret());
-        log.info("Project created: {}", saved.getId());
+        log.info("Project created: {}", saved.getNanoId());
         return saved;
     }
     
     public Project getProject(String id, Admin admin) {
-        Project project = projectRepository.findByIdAndStatusTrue(id)
+        Project project = projectRepository.findByNanoIdAndStatusTrue(id)
                 .orElseThrow(() -> new NotFoundException("Project not found"));
         
 //        if (!isSuperAdmin(admin) && !project.getCreatedBy().equals(admin.getId())) {
 //            throw new UnauthorizedException("You are not authorized to view this project");
 //        }
-        if (!project.getCreatedBy().equals(admin.getId())) {
+        if (!project.getCreatedBy().equals(admin.getNanoId())) {
             if (isSuperAdmin(admin)){
                 return project;
             }
@@ -84,14 +82,14 @@ public class ProjectService {
         if (isSuperAdmin(admin)) {
             return projectRepository.findAll();
         }
-        return projectRepository.findByCreatedBy(admin.getId());
+        return projectRepository.findByCreatedBy(admin.getNanoId());
     }
     
     public Page<Project> getProjectsPage(int page, int size, Admin admin) {
         if (isSuperAdmin(admin)) {
             return projectRepository.findAll(PageRequest.of(page, size));
         }
-        return projectRepository.findByCreatedBy(admin.getId(), PageRequest.of(page, size));
+        return projectRepository.findByCreatedBy(admin.getNanoId(), PageRequest.of(page, size));
     }
     
     @Transactional
@@ -123,10 +121,10 @@ public class ProjectService {
     
     @Transactional
     public Project toggleStatus(String id, Admin admin) {
-        Project project = projectRepository.findById(id)
+        Project project = projectRepository.findByNanoId(id)
                 .orElseThrow(() -> new NotFoundException("Project not found"));
         
-        if (!isSuperAdmin(admin) && !project.getCreatedBy().equals(admin.getId())) {
+        if (!isSuperAdmin(admin) && !project.getCreatedBy().equals(admin.getNanoId())) {
             throw new UnauthorizedException("You are not authorized to change the status of this project");
         }
         
@@ -261,7 +259,7 @@ public class ProjectService {
 
     // This method is for internal use when creating a project
     private Project.Credential createCredential(Project project, String label, String secret) {
-        log.info("Creating credential for project: {}", project.getId());
+        log.info("Creating credential for project: {}", project.getNanoId());
 
         String hashedSecret = passwordHasher.hash(secret);
 
@@ -276,7 +274,7 @@ public class ProjectService {
         project.setUpdatedAt(LocalDateTime.now());
         projectRepository.save(project);
 
-        log.info("Credential created for project: {}", project.getId());
+        log.info("Credential created for project: {}", project.getNanoId());
 
         return credential;
     }

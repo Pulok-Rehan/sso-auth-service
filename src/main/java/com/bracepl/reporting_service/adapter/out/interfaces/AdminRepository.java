@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,6 +33,7 @@ public interface AdminRepository extends MongoRepository<Admin, String> {
      * Find admin by ID (NanoID)
      */
     Optional<Admin> findById(String id);
+    Optional<Admin> findByNanoId(String id);
 
     /**
      * Find admin by public key and status
@@ -42,6 +44,7 @@ public interface AdminRepository extends MongoRepository<Admin, String> {
      * Find admin by ID and status
      */
     Optional<Admin> findByIdAndStatus(String id, Boolean status);
+    List<Admin> findByIsSuperAdminFalse();
 
     /**
      * Check if email exists

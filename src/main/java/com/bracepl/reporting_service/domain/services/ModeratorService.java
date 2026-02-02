@@ -4,6 +4,7 @@ import com.bracepl.reporting_service.adapter.in.ModeratorController;
 import com.bracepl.reporting_service.adapter.out.interfaces.ModeratorRepository;
 import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
 import com.bracepl.reporting_service.application.dtos.ModeratorDto;
+import com.bracepl.reporting_service.application.dtos.ProjectDto;
 import com.bracepl.reporting_service.application.model.CallbackAction;
 import com.bracepl.reporting_service.application.model.Moderator;
 import com.bracepl.reporting_service.application.model.Project;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -48,12 +50,12 @@ public class ModeratorService {
         }
         
         // Verify project exists
-        projectRepository.findByIdAndStatusTrue(request.getProjectId())
+        projectRepository.findByNanoIdAndStatusTrue(request.getProjectId())
                 .orElseThrow(() -> new NotFoundException("Project not found or inactive"));
         
         Moderator moderator = new Moderator();
         moderator.setPublicKey(PublicKeyGenerator.generate());
-        moderator.setId(generateUniqueModeratorId());
+        moderator.setNanoId(generateUniqueModeratorId());
         moderator.setEmail(request.getEmail().toLowerCase());
         moderator.setMobileNumber(request.getMobileNumber());
         moderator.setPassword(passwordHasher.hash(request.getMobileNumber()));
@@ -74,16 +76,32 @@ public class ModeratorService {
         // Trigger callback
         callbackService.notifyProjectCallbacks(CallbackAction.CREATE, saved);
         
-        log.info("Moderator created: {}", saved.getId());
+        log.info("Moderator created: {}", saved.getNanoId());
         return saved;
     }
     
-    public List<Moderator> getAllModerators() {
-        return moderatorRepository.findAll();
+    public List<ModeratorDto.Response> getAllModerators() {
+        List<Moderator> moderators = moderatorRepository.findAll();
+
+        // Collect all project IDs from all moderators to fetch projects in bulk
+        List<String> allProjectIds = moderators.stream()
+                .filter(moderator -> moderator.getProjects() != null)
+                .flatMap(moderator -> moderator.getProjects().stream())
+                .map(Moderator.ProjectRole::getProjectId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Fetch projects by NanoID
+        Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(allProjectIds).stream()
+                .collect(Collectors.toMap(Project::getNanoId, Project::getName));
+
+        return moderators.stream()
+                .map(moderator -> mapToResponseWithProjects(moderator, projectNames))
+                .collect(Collectors.toList());
     }
     
     public Moderator getModerator(String id) {
-        return moderatorRepository.findById(id)
+        return moderatorRepository.findByNanoId(id)
                 .orElseThrow(() -> new NotFoundException("Moderator not found"));
     }
     
@@ -206,7 +224,7 @@ public class ModeratorService {
      * Find moderator by ID (internal use)
      */
     private Moderator findModeratorById(String id) {
-        return moderatorRepository.findById(id)
+        return moderatorRepository.findByNanoId(id)
                 .orElseThrow(() -> new NotFoundException("Moderator not found with ID: " + id));
     }
 
@@ -251,30 +269,64 @@ public class ModeratorService {
     }
 
     /**
-     * Parse date string to LocalDateTime
-     */
-//    private LocalDateTime parseDate(String dateStr, boolean startOfDay) {
-//        try {
-//            LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
-//            return startOfDay ? date.atStartOfDay() : date.atTime(LocalTime.MAX);
-//        } catch (DateTimeParseException e) {
-//            throw new IllegalArgumentException("Invalid date format. Expected: yyyy-MM-dd");
-//        }
-//    }
-
-    /**
      * Map Moderator entity to Response DTO
      */
     private ModeratorDto.Response mapToResponse(Moderator moderator) {
+        List<ProjectDto> projectDtos = new ArrayList<>();
+        if (moderator.getProjects() != null) {
+            List<String> projectIds = moderator.getProjects().stream()
+                    .map(Moderator.ProjectRole::getProjectId)
+                    .collect(Collectors.toList());
+
+            Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(projectIds).stream()
+                    .collect(Collectors.toMap(Project::getNanoId, Project::getName));
+
+            projectDtos = moderator.getProjects().stream()
+                    .map(pr -> ProjectDto.builder()
+                            .projectId(pr.getProjectId())
+                            .projectName(projectNames.getOrDefault(pr.getProjectId(), "Unknown Project"))
+                            .roles(pr.getRoles())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         return ModeratorDto.Response.builder()
-                .id(moderator.getId())
+                .nanoId(moderator.getNanoId())
+                .publicKey(moderator.getPublicKey())
+                .firstname(moderator.getFirstname())
+                .lastname(moderator.getLastname())
+                .mobileNumber(moderator.getMobileNumber())
+                .email(moderator.getEmail())
+                .status(moderator.getStatus())
+                .isVerified(moderator.getIsVerified())
+                .projects(projectDtos)
+                .createdAt(moderator.getCreatedAt())
+                .updatedAt(moderator.getUpdatedAt())
+                .build();
+    }
+
+    private ModeratorDto.Response mapToResponseWithProjects(Moderator moderator, Map<String, String> projectNames) {
+        List<ProjectDto> projectDtos = new ArrayList<>();
+        if (moderator.getProjects() != null) {
+            projectDtos = moderator.getProjects().stream()
+                    .map(pr -> ProjectDto.builder()
+                            .projectId(pr.getProjectId())
+                            .projectName(projectNames.getOrDefault(pr.getProjectId(), "Unknown Project"))
+                            .roles(pr.getRoles())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        return ModeratorDto.Response.builder()
+                .nanoId(moderator.getNanoId())
                 .publicKey(moderator.getPublicKey())
                 .firstname(moderator.getFirstname())
                 .lastname(moderator.getLastname())
                 .email(moderator.getEmail())
+                .mobileNumber(moderator.getMobileNumber())
                 .status(moderator.getStatus())
                 .isVerified(moderator.getIsVerified())
-                .projects(moderator.getProjects())
+                .projects(projectDtos)
                 .createdAt(moderator.getCreatedAt())
                 .updatedAt(moderator.getUpdatedAt())
                 .build();
@@ -285,8 +337,18 @@ public class ModeratorService {
      */
     private ModeratorDto.ListResponse buildListResponse(Page<Moderator> moderatorPage,
                                                         int offset, int limit) {
+        List<String> allProjectIds = moderatorPage.getContent().stream()
+                .filter(moderator -> moderator.getProjects() != null)
+                .flatMap(moderator -> moderator.getProjects().stream())
+                .map(Moderator.ProjectRole::getProjectId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, String> projectNames = projectRepository.findByNanoIdInAndStatusTrue(allProjectIds).stream()
+                .collect(Collectors.toMap(Project::getNanoId, Project::getName));
+
         List<ModeratorDto.Response> moderatorResponses = moderatorPage.getContent().stream()
-                .map(this::mapToResponse)
+                .map(moderator -> mapToResponseWithProjects(moderator, projectNames))
                 .collect(Collectors.toList());
 
         return ModeratorDto.ListResponse.builder()

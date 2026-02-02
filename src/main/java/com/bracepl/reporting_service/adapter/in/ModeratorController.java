@@ -1,6 +1,7 @@
 package com.bracepl.reporting_service.adapter.in;
 
 import com.bracepl.reporting_service.adapter.in.entity.Admin;
+import com.bracepl.reporting_service.application.dtos.ModeratorDto;
 import com.bracepl.reporting_service.application.model.Moderator;
 import com.bracepl.reporting_service.application.model.ServiceResponse;
 import com.bracepl.reporting_service.application.utils.exceptions.ConflictException;
@@ -39,7 +40,7 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} creating moderator: {}", admin.getId(), request.getEmail());
+            log.info("Admin {} creating moderator: {}", admin.getNanoId(), request.getEmail());
 
             Moderator moderator = moderatorService.createModerator(request);
             return new ServiceResponse("Moderator created successfully", moderator, "201");
@@ -61,9 +62,9 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching all moderators", admin.getId());
+            log.info("Admin {} fetching all moderators", admin.getNanoId());
 
-            List<Moderator> moderators = moderatorService.getAllModerators();
+            List<ModeratorDto.Response> moderators = moderatorService.getAllModerators();
             return new ServiceResponse("Moderators retrieved successfully", moderators, "200");
         } catch (Exception e) {
             log.error("Error fetching moderators", e);
@@ -82,7 +83,7 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching moderator: {}", admin.getId(), id);
+            log.info("Admin {} fetching moderator: {}", admin.getNanoId(), id);
 
             Moderator moderator = moderatorService.getModerator(id);
             return new ServiceResponse("Moderator retrieved successfully", moderator, "200");
@@ -107,7 +108,7 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching moderators page {}/{}", admin.getId(), offset, limit);
+            log.info("Admin {} fetching moderators page {}/{}", admin.getNanoId(), offset, limit);
 
             Page<Moderator> moderatorsPage = moderatorService.getModeratorsPage(
                     offset / limit, limit, filterRequest);
@@ -130,7 +131,7 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} updating moderator: {}", admin.getId(), id);
+            log.info("Admin {} updating moderator: {}", admin.getNanoId(), id);
 
             Moderator moderator = moderatorService.updateModerator(id, request);
             return new ServiceResponse("Moderator updated successfully", moderator, "200");
@@ -153,7 +154,7 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} toggling status for moderator: {}", admin.getId(), id);
+            log.info("Admin {} toggling status for moderator: {}", admin.getNanoId(), id);
 
             Moderator moderator = moderatorService.toggleStatus(id);
             return new ServiceResponse("Moderator status updated successfully", moderator, "200");
@@ -176,7 +177,7 @@ public class ModeratorController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} deleting moderator: {}", admin.getId(), id);
+            log.info("Admin {} deleting moderator: {}", admin.getNanoId(), id);
 
             moderatorService.deleteModerator(id);
             return new ServiceResponse("Moderator deleted successfully", null, "200");
@@ -201,7 +202,7 @@ public class ModeratorController {
         try {
             Admin admin = (Admin) authentication.getPrincipal();
             log.info("Admin {} assigning role {} to moderator: {}",
-                    admin.getId(), request.getRole(), id);
+                    admin.getNanoId(), request.getRole(), id);
 
             Moderator moderator = moderatorService.assignRole(
                     id, request.getProjectId(), request.getRole());

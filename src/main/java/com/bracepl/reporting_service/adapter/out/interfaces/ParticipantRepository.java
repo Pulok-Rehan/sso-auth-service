@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface ParticipantRepository extends MongoRepository<Participant, String> {
     
     Optional<Participant> findByEmail(String email);
+    Optional<Participant> findByNanoId(String nanoId);
     @Query("{ 'email': ?0, 'status': true }")
     Optional<Participant> findByEmailAndStatusTrue(String email);
     @Query("{ 'mobileNumber': ?0, 'status': true }")

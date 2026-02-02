@@ -1,6 +1,7 @@
 package com.bracepl.reporting_service.adapter.in;
 
 import com.bracepl.reporting_service.adapter.in.entity.Admin;
+import com.bracepl.reporting_service.application.dtos.ParticipantDto;
 import com.bracepl.reporting_service.application.model.Participant;
 import com.bracepl.reporting_service.application.model.ServiceResponse;
 import com.bracepl.reporting_service.application.utils.exceptions.NotFoundException;
@@ -37,9 +38,9 @@ public class ParticipantController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching all participants", admin.getId());
+            log.info("Admin {} fetching all participants", admin.getNanoId());
 
-            List<Participant> participants = participantService.getAllParticipants();
+            List<ParticipantDto.Response> participants = participantService.getAllParticipants();
             return new ServiceResponse("Participants retrieved successfully", participants, "200");
         } catch (Exception e) {
             log.error("Error fetching participants", e);
@@ -58,7 +59,7 @@ public class ParticipantController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching participant: {}", admin.getId(), id);
+            log.info("Admin {} fetching participant: {}", admin.getNanoId(), id);
 
             Participant participant = participantService.getParticipant(id);
             return new ServiceResponse("Participant retrieved successfully", participant, "200");
@@ -83,7 +84,7 @@ public class ParticipantController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching participants page {}/{}", admin.getId(), offset, limit);
+            log.info("Admin {} fetching participants page {}/{}", admin.getNanoId(), offset, limit);
 
             Page<Participant> participantsPage = participantService.getParticipantsPage(
                     offset / limit, limit, filterRequest);
@@ -106,7 +107,7 @@ public class ParticipantController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} updating participant: {}", admin.getId(), id);
+            log.info("Admin {} updating participant: {}", admin.getNanoId(), id);
 
             Participant participant = participantService.updateParticipant(id, request);
             return new ServiceResponse("Participant updated successfully", participant, "200");
@@ -129,7 +130,7 @@ public class ParticipantController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} toggling status for participant: {}", admin.getId(), id);
+            log.info("Admin {} toggling status for participant: {}", admin.getNanoId(), id);
 
             Participant participant = participantService.toggleStatus(id);
             return new ServiceResponse("Participant status updated successfully", participant, "200");
@@ -152,7 +153,7 @@ public class ParticipantController {
 
         try {
             Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} deleting participant: {}", admin.getId(), id);
+            log.info("Admin {} deleting participant: {}", admin.getNanoId(), id);
 
             participantService.deleteParticipant(id);
             return new ServiceResponse("Participant deleted successfully", null, "200");
@@ -177,7 +178,7 @@ public class ParticipantController {
         try {
             Admin admin = (Admin) authentication.getPrincipal();
             log.info("Admin {} assigning role {} to participant: {}",
-                    admin.getId(), request.getRole(), id);
+                    admin.getNanoId(), request.getRole(), id);
 
             Participant participant = participantService.assignRole(
                     id, request.getProjectId(), request.getRole());

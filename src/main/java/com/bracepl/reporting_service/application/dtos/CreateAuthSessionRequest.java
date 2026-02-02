@@ -21,9 +21,9 @@ public class CreateAuthSessionRequest {
     
     @NotBlank(message = "Credential secret is required")
     private String credentialSecret;
-    
-    @NotBlank(message = "Role is required")
-    private String role;
+//
+//    @NotBlank(message = "Role is required")
+//    private String role;
     
     @NotBlank(message = "User type is required")
     @Pattern(regexp = "^(Participant|Moderator|Admin)$", message = "User type must be Participant or Moderator or Admin")

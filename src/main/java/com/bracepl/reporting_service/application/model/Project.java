@@ -20,10 +20,10 @@ import java.util.List;
 public class Project {
     
     @Id
-    private String mongoId;
+    private String id;
     
     @Indexed(unique = true, sparse = true)
-    private String id; // 8-char NanoID
+    private String nanoId; // 8-char NanoID
     
     private String name;
     

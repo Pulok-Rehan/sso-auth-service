@@ -20,7 +20,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth/participant")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
@@ -81,7 +81,11 @@ public class AuthController {
             else {
                 return new ServiceResponse("Invalid user type", "500");
             }
-        } catch (UnauthorizedException e) {
+        }
+        catch (InvalidCredentialsException e) {
+            return new ServiceResponse("Inavalid Credentials", "403");
+        }
+        catch (UnauthorizedException e) {
             return new ServiceResponse("User unauthorized", "401");
         }
         catch (FirstTimeLogin e) {
@@ -108,7 +112,7 @@ public class AuthController {
             log.info("Participant login request for email: {}", request.getUsername());
             AuthSession authSession = authSessionService.verifyAuthSession(projectId, sessionSecret);
 
-            if ("Participant".equals(authSession.getUserType()) || "Moderator".equals(authSession.getUserType())) {
+            if ("Participant".equals(authSession.getUserType()) || "Moderator".equals(authSession.getUserType()) || "Admin".equals(authSession.getUserType())) {
                 ResetPasswordResponse response = participantAuthService.resetPassword(request, authSession);
                 if (response == null){
                     return new ServiceResponse("Something went wrong", "500");
@@ -118,14 +122,17 @@ public class AuthController {
             else {
                 return new ServiceResponse("Invalid user type", "500");
             }
-        } catch (UnauthorizedException e) {
+        }
+        catch (InvalidCredentialsException e) {
+            return new ServiceResponse("Old Password did not match", "403");
+        }catch (UnauthorizedException e) {
             return new ServiceResponse("User unauthorized", "401");
         }
         catch (FirstTimeLogin e) {
-            return new ServiceResponse("You need to reset your password", "426");
+            return new ServiceResponse("You need to reset your password", "429");
         }
         catch (UserBlockedException e) {
-            return new ServiceResponse("User is blocked. Please contact our customer care", "427");
+            return new ServiceResponse("User is blocked. Please contact our customer care", "430");
         }
         catch (NotFoundException e) {
             return new ServiceResponse("Could not find user", "501");
