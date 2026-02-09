@@ -85,6 +85,8 @@ public class AdminService {
                 .status(true)
                 .isVerified(false)
                 .twoFactorEnabled(false)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .isSuperAdmin(false)
                 .build();
 

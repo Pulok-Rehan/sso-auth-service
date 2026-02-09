@@ -1,5 +1,7 @@
 package com.bracepl.reporting_service.application.model;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -54,8 +56,11 @@ public class Project {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Services {
+        @Pattern(regexp = "(^$)|(^(https?://)[^?]+(?<!/)$)", message = "API URL must be a valid URL")
         private String apiUrl;
+        @Pattern(regexp = "(^$)|(^(https?://)[^?]+(?<!/)$)", message = "Admin URL must be a valid URL")
         private String adminUrl;
+        @Pattern(regexp = "(^$)|(^(https?://)[^?]+(?<!/)$)", message = "Web URL must be a valid URL")
         private String webUrl;
     }
     
@@ -78,17 +83,30 @@ public class Project {
         private String name;
         private String slug;
         private String userType; // "Participant" or "Moderator"
+        private Boolean status = true;
     }
     
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Callbacks {
+        
+        @Pattern(regexp = "(^$)|(^(https?://)[^?]+(?<!/)$)", message = "API Callback must be a valid URL, cannot contain query parameters")
         private String apiCallback;
+        
+        @NotBlank(message = "UI Callback is required")
+        @Pattern(regexp = "^(https?://)[^?]+(?<!/)$", message = "UI Callback must be a valid URL, cannot contain query parameters")
         private String uiCallback;
+        
+        @Pattern(regexp = "(^$)|(^(https?://)[^?]+(?<!/)$)", message = "Admin Callback must be a valid URL, cannot contain query parameters")
+        private String adminCallback;
+        
         private String apiKey;
         private ApiKeyDestination apiKeyDestination;
         private String apiKeyName;
+        
+        @NotBlank(message = "UI Query Param is required")
         private String uiQueryParam;
+        private String adminQueryParam;
     }
 }

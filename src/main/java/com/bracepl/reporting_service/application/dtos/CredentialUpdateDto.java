@@ -6,5 +6,5 @@ import lombok.Data;
 public class CredentialUpdateDto {
     private String projectId;
     private String credentialId;
-    private String newSecret;
+//    private String newSecret;
 }

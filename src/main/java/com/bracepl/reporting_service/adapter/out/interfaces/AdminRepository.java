@@ -55,6 +55,11 @@ public interface AdminRepository extends MongoRepository<Admin, String> {
      * Check if ID exists
      */
     boolean existsById(String id);
+    
+    /**
+     * Check if any SuperAdmin exists
+     */
+    boolean existsByIsSuperAdminTrue();
 
     /**
      * Find all admins with filters

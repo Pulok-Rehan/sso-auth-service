@@ -1,5 +1,6 @@
 package com.bracepl.reporting_service.domain.services;
 
+import com.bracepl.reporting_service.adapter.in.entity.Admin;
 import com.bracepl.reporting_service.adapter.out.interfaces.CallbackLogRepository;
 import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
 import com.bracepl.reporting_service.application.model.*;
@@ -44,7 +45,7 @@ public class CallbackService {
         }
         
         // Get all active projects
-        List<Project> projects = projectRepository.findByIdInAndStatusTrue(projectIds);
+        List<Project> projects = projectRepository.findByNanoIdInAndStatusTrue(projectIds);
         
         if (projects.isEmpty()) {
             log.debug("No active projects found for callback");
@@ -55,9 +56,16 @@ public class CallbackService {
         
         // Execute callbacks in parallel
         projects.parallelStream().forEach(project -> {
-            if (project.getCallbacks() != null && 
-                project.getCallbacks().getApiCallback() != null) {
-                executeCallback(action, user, project);
+            if (project.getCallbacks() != null) {
+                // 1. Notify API Callback
+                if (project.getCallbacks().getApiCallback() != null) {
+                    executeCallback(action, user, project, false);
+                }
+                
+                // 2. Notify Admin Callback
+                if (project.getCallbacks().getAdminCallback() != null) {
+                    executeCallback(action, user, project, true);
+                }
             }
         });
     }
@@ -74,19 +82,23 @@ public class CallbackService {
             return;
         }
         
-        if (project.getCallbacks() == null || 
-            project.getCallbacks().getApiCallback() == null) {
-            log.debug("No API callback configured for project: {}", projectId);
-            return;
+        if (project.getCallbacks() != null) {
+            // 1. Notify API Callback
+            if (project.getCallbacks().getApiCallback() != null) {
+                executeCallback(action, user, project, false);
+            }
+            
+            // 2. Notify Admin Callback
+            if (project.getCallbacks().getAdminCallback() != null) {
+                executeCallback(action, user, project, true);
+            }
         }
-        
-        executeCallback(action, user, project);
     }
     
     /**
      * Execute callback to project API
      */
-    private void executeCallback(CallbackAction action, Object user, Project project) {
+    private void executeCallback(CallbackAction action, Object user, Project project, boolean isAdminCallback) {
         long startTime = System.currentTimeMillis();
         
         // Build payload
@@ -102,7 +114,18 @@ public class CallbackService {
                        project.getCallbacks().getApiKey());
         }
         
-        String callbackUrl = project.getCallbacks().getApiCallback();
+        String callbackUrl;
+        if (isAdminCallback) {
+            callbackUrl = project.getCallbacks().getAdminCallback();
+            // Append admin query param if exists
+            if (project.getCallbacks().getAdminQueryParam() != null) {
+                String separator = callbackUrl.contains("?") ? "&" : "?";
+                callbackUrl += separator + project.getCallbacks().getAdminQueryParam();
+            }
+        } else {
+            callbackUrl = project.getCallbacks().getApiCallback();
+        }
+
         String userId = extractUserId(user);
         String userEmail = extractUserEmail(user);
         
@@ -162,6 +185,7 @@ public class CallbackService {
             userMap.put("status", participant.getStatus());
             userMap.put("isVerified", participant.getIsVerified());
             userMap.put("projects", participant.getProjects());
+            userMap.put("type", "Participant");
         } else if (user instanceof Moderator) {
             Moderator moderator = (Moderator) user;
             userMap.put("id", moderator.getNanoId());
@@ -172,6 +196,18 @@ public class CallbackService {
             userMap.put("status", moderator.getStatus());
             userMap.put("isVerified", moderator.getIsVerified());
             userMap.put("projects", moderator.getProjects());
+            userMap.put("type", "Moderator");
+        } else if (user instanceof Admin) {
+            Admin admin = (Admin) user;
+            userMap.put("id", admin.getNanoId());
+            userMap.put("firstname", admin.getFirstname());
+            userMap.put("lastname", admin.getLastname());
+            userMap.put("email", admin.getEmail());
+            userMap.put("public_key", admin.getPublicKey());
+            userMap.put("status", admin.getStatus());
+            userMap.put("isVerified", admin.getIsVerified());
+            userMap.put("projects", admin.getProjects());
+            userMap.put("type", "Admin");
         }
         
         payload.put("user", userMap);
@@ -241,6 +277,11 @@ public class CallbackService {
             return ((Moderator) user).getProjects().stream()
                     .map(Moderator.ProjectRole::getProjectId)
                     .collect(Collectors.toList());
+        } else if (user instanceof Admin) {
+            if (((Admin) user).getProjects() == null) return Collections.emptyList();
+            return ((Admin) user).getProjects().stream()
+                    .map(Admin.ProjectRole::getProjectId)
+                    .collect(Collectors.toList());
         }
         return Collections.emptyList();
     }
@@ -253,6 +294,8 @@ public class CallbackService {
             return ((Participant) user).getNanoId();
         } else if (user instanceof Moderator) {
             return ((Moderator) user).getNanoId();
+        } else if (user instanceof Admin) {
+            return ((Admin) user).getNanoId();
         }
         return null;
     }
@@ -265,6 +308,8 @@ public class CallbackService {
             return ((Participant) user).getEmail();
         } else if (user instanceof Moderator) {
             return ((Moderator) user).getEmail();
+        } else if (user instanceof Admin) {
+            return ((Admin) user).getEmail();
         }
         return null;
     }

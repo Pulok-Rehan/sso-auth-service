@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -130,8 +131,11 @@ public class ParticipantAuthService {
         
         log.info("User login attempt: {}", request.getUsername());
         
+        // Normalize username to lowercase to ensure consistency
+        String username = request.getUsername().toLowerCase();
+        
         // 1. Get Login Attempt & Check Blocked
-        LoginAttempt loginAttempt = loginAttemptService.getOrCreate(request.getUsername());
+        LoginAttempt loginAttempt = loginAttemptService.getOrCreate(username);
         if (loginAttemptService.checkBlocked(loginAttempt)) {
             throw new UserBlockedException("User is blocked. Please contact our customer care");
         }
@@ -343,7 +347,7 @@ public class ParticipantAuthService {
         );
         
         // Get project for callback URL
-        Project project = projectRepository.findByIdAndStatusTrue(projectId)
+        Project project = projectRepository.findByNanoIdAndStatusTrue(projectId)
                 .orElseThrow(() -> new NotFoundException("Project not found"));
         
         // Build callback URL
@@ -394,7 +398,8 @@ public class ParticipantAuthService {
         
         String uiCallback = project.getCallbacks().getUiCallback();
         String queryParam = project.getCallbacks().getUiQueryParam();
-        
+        String adminCallback = project.getCallbacks().getAdminCallback();
+
         // Determine separator
         String separator = uiCallback.contains("?") ? "&" : "?";
         

@@ -145,7 +145,7 @@ public class CredentialController {
     @lombok.AllArgsConstructor
     public static class CredentialCreateRequest {
         private String label;
-        private String secret;
+//        private String secret;
     }
 
     @lombok.Data

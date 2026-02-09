@@ -155,6 +155,32 @@ public class RoleController {
     }
 
     /**
+     * Toggle role status
+     * POST /role/{projectId}/roles/{roleSlug}/toggle-status
+     */
+    @PostMapping("/{projectId}/roles/{roleSlug}/toggle-status")
+    public ServiceResponse toggleRoleStatus(
+            Authentication authentication,
+            @PathVariable String projectId,
+            @PathVariable String roleSlug) {
+        
+        try {
+            Admin admin = (Admin) authentication.getPrincipal();
+            log.info("Admin {} toggling status for role {} in project: {}", admin.getNanoId(), roleSlug, projectId);
+            
+            Project.AllowedRole role = projectService.toggleRoleStatus(projectId, roleSlug, admin);
+            return new ServiceResponse("Role status toggled successfully", role, "200");
+        } catch (NotFoundException e) {
+            return new ServiceResponse(e.getMessage(), "404");
+        } catch (UnauthorizedException e) {
+            return new ServiceResponse(e.getMessage(), "401");
+        } catch (Exception e) {
+            log.error("Error toggling role status", e);
+            return new ServiceResponse("Something went wrong", "500");
+        }
+    }
+
+    /**
      * Get all user types
      * GET /role/user-types
      */
@@ -231,6 +257,31 @@ public class RoleController {
             return new ServiceResponse(e.getMessage(), "401");
         } catch (Exception e) {
             log.error("Error assigning role", e);
+            return new ServiceResponse("Something went wrong", "500");
+        }
+    }
+
+    /**
+     * Unassign role from user
+     * POST /role/unassign-role
+     */
+    @PostMapping("/unassign-role")
+    public ServiceResponse unassignRole(
+            Authentication authentication,
+            @Valid @RequestBody AssignRoleRequest request) {
+        try {
+            Admin assigningAdmin = (Admin) authentication.getPrincipal();
+            log.info("Admin {} unassigning role {} from user {}", assigningAdmin.getNanoId(), request.getRole(), request.getUserId());
+
+            roleService.unassignRole(assigningAdmin, request.getUserId(), request.getUserType(), request.getProjectId(), request.getRole());
+
+            return new ServiceResponse("Role unassigned successfully", null, "200");
+        } catch (NotFoundException e) {
+            return new ServiceResponse(e.getMessage(), "404");
+        } catch (UnauthorizedException e) {
+            return new ServiceResponse(e.getMessage(), "401");
+        } catch (Exception e) {
+            log.error("Error unassigning role", e);
             return new ServiceResponse("Something went wrong", "500");
         }
     }

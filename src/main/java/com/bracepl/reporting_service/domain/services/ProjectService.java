@@ -6,6 +6,7 @@ import com.bracepl.reporting_service.adapter.in.CredentialController;
 import com.bracepl.reporting_service.adapter.in.entity.Admin;
 import com.bracepl.reporting_service.adapter.out.interfaces.AdminRepository;
 import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
+import com.bracepl.reporting_service.application.dtos.CreateProjectDto;
 import com.bracepl.reporting_service.application.model.Project;
 import com.bracepl.reporting_service.application.utils.CredentialSecretGenerator;
 import com.bracepl.reporting_service.application.utils.NanoIdGenerator;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -38,7 +40,7 @@ public class ProjectService {
     private final AdminRepository adminRepository;
     
     @Transactional
-    public Project createProject(ProjectController.ProjectCreateRequest request, Admin admin) {
+    public CreateProjectDto createProject(ProjectController.ProjectCreateRequest request, Admin admin) {
         log.info("Creating project: {}", request.getName());
         
         if (projectRepository.existsBySlug(request.getName().replace(" ", "-"))) {
@@ -57,9 +59,17 @@ public class ProjectService {
         project.setUpdatedAt(LocalDateTime.now());
         
         Project saved = projectRepository.save(project);
-        this.createCredential(saved, saved.getSlug() + UUID.randomUUID(), request.getSecret());
+        String generatedSecret = CredentialSecretGenerator.generate();
+        this.createCredential(saved, saved.getSlug() + UUID.randomUUID(), generatedSecret);
         log.info("Project created: {}", saved.getNanoId());
-        return saved;
+        Optional<Project> savedProject = projectRepository.findByNanoId(saved.getNanoId());
+        if (savedProject.isEmpty()){
+            throw new NotFoundException("Project not found");
+        }
+        return CreateProjectDto.builder()
+                .project(savedProject.get())
+                .credential(generatedSecret)
+                .build();
     }
     
     public Project getProject(String id, Admin admin) {
@@ -140,8 +150,8 @@ public class ProjectService {
         log.info("Creating credential for project: {}", projectId);
 
         Project project = getProject(projectId, admin); // Authorization check
-
-        String hashedSecret = passwordHasher.hash(credentialCreateRequest.getSecret());
+        String generatedCredential = nanoIdGenerator.generate();
+        String hashedSecret = passwordHasher.hash(generatedCredential);
 
         Project.Credential credential = new Project.Credential();
         credential.setId(UUID.randomUUID().toString());
@@ -156,7 +166,7 @@ public class ProjectService {
 
         log.info("Credential created for project: {}", projectId);
 
-        return new CredentialController.CredentialResponse(credential.getId(), credentialCreateRequest.getLabel(), credentialCreateRequest.getSecret());
+        return new CredentialController.CredentialResponse(credential.getId(), credentialCreateRequest.getLabel(), generatedCredential);
     }
 
     @Transactional
@@ -243,6 +253,24 @@ public class ProjectService {
         project.getAllowedRoles().removeIf(r -> r.getSlug().equals(roleSlug));
         project.setUpdatedAt(LocalDateTime.now());
         projectRepository.save(project);
+    }
+
+    @Transactional
+    public Project.AllowedRole toggleRoleStatus(String projectId, String roleSlug, Admin admin) {
+        log.info("Toggling status for role: {} in project: {}", roleSlug, projectId);
+        
+        Project project = getProject(projectId, admin); // Authorization check
+        
+        Project.AllowedRole role = project.getAllowedRoles().stream()
+                .filter(r -> r.getSlug().equals(roleSlug))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Role not found"));
+        
+        role.setStatus(!role.getStatus());
+        project.setUpdatedAt(LocalDateTime.now());
+        projectRepository.save(project);
+        
+        return role;
     }
     
     private String generateUniqueProjectId() {

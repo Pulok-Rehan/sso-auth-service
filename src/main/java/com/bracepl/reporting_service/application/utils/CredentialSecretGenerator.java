@@ -13,7 +13,7 @@ public class CredentialSecretGenerator {
     private static final String ALPHABET =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-    private static final int DEFAULT_LENGTH = 32;
+    private static final int DEFAULT_LENGTH = 12;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 

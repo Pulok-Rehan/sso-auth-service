@@ -1,6 +1,7 @@
 package com.bracepl.reporting_service.adapter.in;
 
 import com.bracepl.reporting_service.adapter.in.entity.Admin;
+import com.bracepl.reporting_service.application.dtos.CreateProjectDto;
 import com.bracepl.reporting_service.application.model.Project;
 import com.bracepl.reporting_service.application.model.ServiceResponse;
 import com.bracepl.reporting_service.application.utils.exceptions.UnauthorizedException;
@@ -36,7 +37,7 @@ public class ProjectController {
             Admin admin = (Admin) authentication.getPrincipal();
             log.info("Admin {} creating project: {}", admin.getNanoId(), request.getName());
 
-            Project project = projectService.createProject(request, admin);
+            CreateProjectDto project = projectService.createProject(request, admin);
             return new ServiceResponse("Project created successfully", project, "201");
         } catch (Exception e) {
             log.error("Error creating project", e);
@@ -159,9 +160,11 @@ public class ProjectController {
     @lombok.AllArgsConstructor
     public static class ProjectCreateRequest {
         private String name;
-        private String secret;
-
+//        private String secret;
+        @Valid
         private Project.Services services;
+        
+        @Valid
         private Project.Callbacks callbacks;
     }
 
@@ -172,7 +175,10 @@ public class ProjectController {
         private String name;
         private String slug;
 
+        @Valid
         private Project.Services services;
+        
+        @Valid
         private Project.Callbacks callbacks;
     }
 

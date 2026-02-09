@@ -29,22 +29,7 @@ public class RoleService {
     @Transactional
     public void assignRole(Admin assigningAdmin, String userId, String userTypeStr, String projectId, String roleSlug) {
         UserType userType = UserType.fromValue(userTypeStr);
-
-        // Authorization Check
-        if (userType == UserType.ADMIN) {
-            if (!Boolean.TRUE.equals(assigningAdmin.getIsSuperAdmin())) {
-                throw new UnauthorizedException("Only SuperAdmins can assign roles to other Admins");
-            }
-        } else {
-            // For Participants and Moderators, check if admin has access to the project
-            boolean hasAccess = Boolean.TRUE.equals(assigningAdmin.getIsSuperAdmin()) ||
-                    (assigningAdmin.getProjects() != null && assigningAdmin.getProjects().stream()
-                            .anyMatch(p -> p.getProjectId().equals(projectId)));
-
-            if (!hasAccess) {
-                throw new UnauthorizedException("You do not have access to manage roles for this project");
-            }
-        }
+        checkAuthorization(assigningAdmin, userType, projectId);
 
         // Perform Assignment
         switch (userType) {
@@ -59,6 +44,44 @@ public class RoleService {
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported user type for role assignment");
+        }
+    }
+
+    @Transactional
+    public void unassignRole(Admin assigningAdmin, String userId, String userTypeStr, String projectId, String roleSlug) {
+        UserType userType = UserType.fromValue(userTypeStr);
+        checkAuthorization(assigningAdmin, userType, projectId);
+
+        // Perform Unassignment
+        switch (userType) {
+            case ADMIN:
+                unassignRoleFromAdmin(userId, projectId, roleSlug);
+                break;
+            case PARTICIPANT:
+                unassignRoleFromParticipant(userId, projectId, roleSlug);
+                break;
+            case MODERATOR:
+                unassignRoleFromModerator(userId, projectId, roleSlug);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported user type for role unassignment");
+        }
+    }
+
+    private void checkAuthorization(Admin assigningAdmin, UserType targetUserType, String projectId) {
+        if (targetUserType == UserType.ADMIN) {
+            if (!Boolean.TRUE.equals(assigningAdmin.getIsSuperAdmin())) {
+                throw new UnauthorizedException("Only SuperAdmins can manage roles for other Admins");
+            }
+        } else {
+            // For Participants and Moderators, check if admin has access to the project
+            boolean hasAccess = Boolean.TRUE.equals(assigningAdmin.getIsSuperAdmin()) ||
+                    (assigningAdmin.getProjects() != null && assigningAdmin.getProjects().stream()
+                            .anyMatch(p -> p.getProjectId().equals(projectId)));
+
+            if (!hasAccess) {
+                throw new UnauthorizedException("You do not have access to manage roles for this project");
+            }
         }
     }
 
@@ -105,6 +128,36 @@ public class RoleService {
         }
         updateModeratorProjectRole(moderator.getProjects(), projectId, roleSlug);
         moderatorRepository.save(moderator);
+    }
+
+    private void unassignRoleFromAdmin(String adminId, String projectId, String roleSlug) {
+        Admin admin = adminRepository.findByNanoId(adminId)
+                .orElseThrow(() -> new NotFoundException("Admin not found"));
+
+        if (admin.getProjects() != null) {
+            removeRoleFromProject(admin.getProjects(), projectId, roleSlug);
+            adminRepository.save(admin);
+        }
+    }
+
+    private void unassignRoleFromParticipant(String participantId, String projectId, String roleSlug) {
+        Participant participant = participantRepository.findByNanoId(participantId)
+                .orElseThrow(() -> new NotFoundException("Participant not found"));
+
+        if (participant.getProjects() != null) {
+            removeRoleFromProjectParticipant(participant.getProjects(), projectId, roleSlug);
+            participantRepository.save(participant);
+        }
+    }
+
+    private void unassignRoleFromModerator(String moderatorId, String projectId, String roleSlug) {
+        Moderator moderator = moderatorRepository.findByNanoId(moderatorId)
+                .orElseThrow(() -> new NotFoundException("Moderator not found"));
+
+        if (moderator.getProjects() != null) {
+            removeRoleFromProjectModerator(moderator.getProjects(), projectId, roleSlug);
+            moderatorRepository.save(moderator);
+        }
     }
 
     private void updateAdminProjectRole(List<Admin.ProjectRole> projects, String projectId, String roleSlug) {
@@ -156,5 +209,42 @@ public class RoleService {
         if (!projectRole.getRoles().contains(roleSlug)) {
             projectRole.getRoles().add(roleSlug);
         }
+    }
+
+    // Helper methods for unassigning roles (duplicated due to type erasure/different inner classes)
+    private void removeRoleFromProject(List<Admin.ProjectRole> projects, String projectId, String roleSlug) {
+        projects.stream()
+                .filter(p -> p.getProjectId().equals(projectId))
+                .findFirst()
+                .ifPresent(projectRole -> {
+                    projectRole.getRoles().remove(roleSlug);
+                    if (projectRole.getRoles().isEmpty()) {
+                        projects.remove(projectRole);
+                    }
+                });
+    }
+
+    private void removeRoleFromProjectParticipant(List<Participant.ProjectRole> projects, String projectId, String roleSlug) {
+        projects.stream()
+                .filter(p -> p.getProjectId().equals(projectId))
+                .findFirst()
+                .ifPresent(projectRole -> {
+                    projectRole.getRoles().remove(roleSlug);
+                    if (projectRole.getRoles().isEmpty()) {
+                        projects.remove(projectRole);
+                    }
+                });
+    }
+
+    private void removeRoleFromProjectModerator(List<Moderator.ProjectRole> projects, String projectId, String roleSlug) {
+        projects.stream()
+                .filter(p -> p.getProjectId().equals(projectId))
+                .findFirst()
+                .ifPresent(projectRole -> {
+                    projectRole.getRoles().remove(roleSlug);
+                    if (projectRole.getRoles().isEmpty()) {
+                        projects.remove(projectRole);
+                    }
+                });
     }
 }
