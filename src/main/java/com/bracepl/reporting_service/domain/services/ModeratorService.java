@@ -115,25 +115,28 @@ public class ModeratorService {
     @Transactional
     public Moderator updateModerator(String id, ModeratorController.ModeratorUpdateRequest request) {
         log.info("Updating moderator: {}", id);
-        
+
         Moderator moderator = getModerator(id);
-        
+
         // Check email uniqueness
-        if (!moderator.getEmail().equals(request.getEmail()) && 
-            moderatorRepository.existsByEmail(request.getEmail())) {
+        if (!moderator.getEmail().equals(request.getEmail()) &&
+                moderatorRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Moderator with this email already exists");
         }
-        
-        moderator.setFirstname(request.getFirstname());
-//        moderator.setLastname(request.getLastname());
+        if (!moderator.getMobileNumber().equals(request.getMobileNumber()) &&
+                moderatorRepository.existsByMobileNumber(request.getMobileNumber())) {
+            throw new ConflictException("Moderator with this Mobile Number already exists");
+        }
+
+        moderator.setMobileNumber(request.getMobileNumber());
         moderator.setEmail(request.getEmail().toLowerCase());
         moderator.setUpdatedAt(LocalDateTime.now());
-        
+
         Moderator updated = moderatorRepository.save(moderator);
-        
+
         // Trigger callback
         callbackService.notifyProjectCallbacks(CallbackAction.UPDATE, updated);
-        
+
         log.info("Moderator updated: {}", id);
         return updated;
     }

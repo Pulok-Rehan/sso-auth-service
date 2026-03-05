@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -107,4 +108,8 @@ public interface AdminRepository extends MongoRepository<Admin, String> {
 
         return findByMobileNumberAndStatusTrue(username);
     }
+
+    @Query("{ 'projects.projectId': ?0 }")
+    @Update("{ '$pull': { 'projects.$.roles': ?1 } }")
+    void removeRoleFromAllUsers(String projectId, String roleSlug);
 }

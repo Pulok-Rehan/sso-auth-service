@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Admin Management Controller
@@ -22,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     private final AdminService adminService;
@@ -162,6 +164,32 @@ public class AdminController {
             return new ServiceResponse("Analytics retrieved successfully", response, "200");
         } catch (Exception e) {
             log.error("Error fetching analytics", e);
+            return new ServiceResponse("Something went wrong", "500");
+        }
+    }
+
+    /**
+     * Lookup user by username and type
+     * GET /api/admin/user-lookup
+     */
+    @GetMapping("/user-lookup")
+    public ServiceResponse lookupUser(
+            Authentication authentication,
+            @RequestParam String username,
+            @RequestParam String userType) {
+        
+        try {
+            Admin admin = (Admin) authentication.getPrincipal();
+            log.info("Admin {} looking up user: {} type: {}", admin.getNanoId(), username, userType);
+            
+            Map<String, String> userInfo = adminService.lookupUser(username, userType);
+            return new ServiceResponse("User found", userInfo, "200");
+        } catch (NotFoundException e) {
+            return new ServiceResponse(e.getMessage(), "404");
+        } catch (IllegalArgumentException e) {
+            return new ServiceResponse(e.getMessage(), "400");
+        } catch (Exception e) {
+            log.error("Error looking up user", e);
             return new ServiceResponse("Something went wrong", "500");
         }
     }

@@ -92,7 +92,7 @@ public class AuthController {
             return new ServiceResponse("You need to reset your password", "429");
         }
         catch (UserBlockedException e) {
-            return new ServiceResponse("User is blocked. Please contact our customer care", "430");
+            return new ServiceResponse("User is locked. Please contact our customer care", "430");
         }
         catch (NotFoundException e) {
             return new ServiceResponse("Could not find user", "501");
@@ -181,6 +181,22 @@ public class AuthController {
             return new ServiceResponse("Could not find user", "501");
         }
         catch (Exception e) {
+            return new ServiceResponse("Something went wrong", "500");
+        }
+    }
+
+    @PostMapping("/logout")
+    public ServiceResponse logout(
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("userType") UserType userType) {
+        try {
+            log.info("Logout request for user: {}", userId);
+            participantAuthService.logout(userId, userType.getValue());
+            return new ServiceResponse("Logout successful", null, "200");
+        } catch (NotFoundException e) {
+            return new ServiceResponse(e.getMessage(), "404");
+        } catch (Exception e) {
+            log.error("Error during logout", e);
             return new ServiceResponse("Something went wrong", "500");
         }
     }

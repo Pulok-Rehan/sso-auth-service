@@ -216,7 +216,7 @@ public class ProjectService {
         
         Project.AllowedRole role = new Project.AllowedRole();
         role.setName(request.getName());
-        role.setSlug(request.getName().toLowerCase().replace(" ", "-"));
+        role.setSlug(request.getSlug());
         role.setUserType(request.getUserType());
         
         project.getAllowedRoles().add(role);

@@ -8,7 +8,10 @@ import com.bracepl.reporting_service.adapter.out.interfaces.ProjectRepository;
 import com.bracepl.reporting_service.adapter.out.service.OtpClient;
 import com.bracepl.reporting_service.application.dtos.AdminDto;
 import com.bracepl.reporting_service.application.dtos.ProjectDto;
+import com.bracepl.reporting_service.application.model.Moderator;
+import com.bracepl.reporting_service.application.model.Participant;
 import com.bracepl.reporting_service.application.model.Project;
+import com.bracepl.reporting_service.application.model.UserType;
 import com.bracepl.reporting_service.application.utils.CredentialSecretGenerator;
 import com.bracepl.reporting_service.application.utils.NanoIdGenerator;
 import com.bracepl.reporting_service.application.utils.PublicKeyGenerator;
@@ -31,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -239,6 +243,33 @@ public class AdminService {
                 .activeProjects(activeProjects)
                 .totalUsers(totalUsers)
                 .build();
+    }
+
+    /**
+     * Lookup user by username and type
+     */
+    public Map<String, String> lookupUser(String username, String userTypeStr) {
+        log.info("Looking up user: {} type: {}", username, userTypeStr);
+        
+        Map<String, String> result = new HashMap<>();
+        
+        if (UserType.PARTICIPANT.getValue().equalsIgnoreCase(userTypeStr)) {
+            Participant participant = participantRepository.findActiveByUsername(username)
+                    .orElseThrow(() -> new NotFoundException("Participant not found"));
+            result.put("email", participant.getEmail());
+            result.put("mobileNumber", participant.getMobileNumber());
+            result.put("id", participant.getNanoId());
+        } else if (UserType.MODERATOR.getValue().equalsIgnoreCase(userTypeStr)) {
+            Moderator moderator = moderatorRepository.findActiveByUsername(username)
+                    .orElseThrow(() -> new NotFoundException("Moderator not found"));
+            result.put("email", moderator.getEmail());
+            result.put("mobileNumber", moderator.getMobileNumber());
+            result.put("id", moderator.getNanoId());
+        } else {
+            throw new IllegalArgumentException("Invalid user type for lookup. ");
+        }
+        
+        return result;
     }
 
     /**

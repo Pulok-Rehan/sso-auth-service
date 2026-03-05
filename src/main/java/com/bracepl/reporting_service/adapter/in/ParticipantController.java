@@ -4,6 +4,7 @@ import com.bracepl.reporting_service.adapter.in.entity.Admin;
 import com.bracepl.reporting_service.application.dtos.ParticipantDto;
 import com.bracepl.reporting_service.application.model.Participant;
 import com.bracepl.reporting_service.application.model.ServiceResponse;
+import com.bracepl.reporting_service.application.utils.exceptions.ConflictException;
 import com.bracepl.reporting_service.application.utils.exceptions.NotFoundException;
 import com.bracepl.reporting_service.domain.services.ParticipantService;
 import jakarta.validation.Valid;
@@ -27,6 +28,29 @@ import java.util.List;
 public class ParticipantController {
 
     private final ParticipantService participantService;
+
+    /**
+     * Create participant
+     * POST /participant
+     */
+    @PostMapping
+    public ServiceResponse createParticipant(
+            Authentication authentication,
+            @Valid @RequestBody ParticipantCreateRequest request) {
+
+        try {
+            Admin admin = (Admin) authentication.getPrincipal();
+            log.info("Admin {} creating participant: {}", admin.getNanoId(), request.getEmail());
+
+            Participant participant = participantService.createParticipant(request);
+            return new ServiceResponse("Participant created successfully", participant, "201");
+        } catch (ConflictException e) {
+            return new ServiceResponse(e.getMessage(), "409");
+        } catch (Exception e) {
+            log.error("Error creating participant", e);
+            return new ServiceResponse("Something went wrong", "500");
+        }
+    }
 
     /**
      * Get all participants
@@ -58,8 +82,8 @@ public class ParticipantController {
             @PathVariable String id) {
 
         try {
-            Admin admin = (Admin) authentication.getPrincipal();
-            log.info("Admin {} fetching participant: {}", admin.getNanoId(), id);
+//            Admin admin = (Admin) authentication.getPrincipal();
+//            log.info("Admin {} fetching participant: {}", admin.getNanoId(), id);
 
             Participant participant = participantService.getParticipant(id);
             return new ServiceResponse("Participant retrieved successfully", participant, "200");
@@ -196,9 +220,18 @@ public class ParticipantController {
     @lombok.Data
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
+    public static class ParticipantCreateRequest {
+        private String email;
+        private String mobileNumber;
+        private String projectId;
+        private String role;
+    }
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
     public static class ParticipantUpdateRequest {
-        private String firstname;
-        private String lastname;
+        private String mobileNumber;
         private String email;
     }
 

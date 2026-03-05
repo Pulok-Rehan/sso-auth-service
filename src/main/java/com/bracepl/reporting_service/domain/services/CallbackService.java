@@ -102,14 +102,14 @@ public class CallbackService {
         long startTime = System.currentTimeMillis();
         
         // Build payload
-        Map<String, Object> payload = buildPayload(action, user);
+        Map<String, Object> payload = buildPayload(action, user, project.getNanoId());
         
         // Build headers
         Map<String, String> headers = buildHeaders(project);
         
         // Add API key to body if needed
         if (project.getCallbacks().getApiKeyDestination() != null &&
-            "body".equals(project.getCallbacks().getApiKeyDestination().getValue())) {
+            "body".equalsIgnoreCase(project.getCallbacks().getApiKeyDestination().getValue())) {
             payload.put(project.getCallbacks().getApiKeyName(), 
                        project.getCallbacks().getApiKey());
         }
@@ -169,7 +169,7 @@ public class CallbackService {
     /**
      * Build callback payload
      */
-    private Map<String, Object> buildPayload(CallbackAction action, Object user) {
+    private Map<String, Object> buildPayload(CallbackAction action, Object user, String projectId) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("action", action.getValue());
         
@@ -178,36 +178,69 @@ public class CallbackService {
         if (user instanceof Participant) {
             Participant participant = (Participant) user;
             userMap.put("id", participant.getNanoId());
-            userMap.put("firstname", participant.getFirstname());
-            userMap.put("lastname", participant.getLastname());
             userMap.put("email", participant.getEmail());
+            userMap.put("phone", participant.getMobileNumber());
             userMap.put("public_key", participant.getPublicKey());
             userMap.put("status", participant.getStatus());
             userMap.put("isVerified", participant.getIsVerified());
-            userMap.put("projects", participant.getProjects());
-            userMap.put("type", "Participant");
+            
+            // Get roles for this specific project
+            List<String> roles = participant.getProjects().stream()
+                    .filter(p -> p.getProjectId().equals(projectId))
+                    .findFirst()
+                    .map(Participant.ProjectRole::getRoles)
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .filter(role -> role != null && !role.trim().isEmpty() && !role.equalsIgnoreCase("null"))
+                    .collect(Collectors.toList());
+            userMap.put("roles", roles);
+            
+            payload.put("userType", "Participant");
         } else if (user instanceof Moderator) {
             Moderator moderator = (Moderator) user;
             userMap.put("id", moderator.getNanoId());
-            userMap.put("firstname", moderator.getFirstname());
-            userMap.put("lastname", moderator.getLastname());
             userMap.put("email", moderator.getEmail());
+            userMap.put("phone", moderator.getMobileNumber());
             userMap.put("public_key", moderator.getPublicKey());
             userMap.put("status", moderator.getStatus());
             userMap.put("isVerified", moderator.getIsVerified());
-            userMap.put("projects", moderator.getProjects());
-            userMap.put("type", "Moderator");
+            
+            // Get roles for this specific project
+            List<String> roles = moderator.getProjects().stream()
+                    .filter(p -> p.getProjectId().equals(projectId))
+                    .findFirst()
+                    .map(Moderator.ProjectRole::getRoles)
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .filter(role -> role != null && !role.trim().isEmpty() && !role.equalsIgnoreCase("null"))
+                    .collect(Collectors.toList());
+            userMap.put("roles", roles);
+            
+            payload.put("userType", "Moderator");
         } else if (user instanceof Admin) {
             Admin admin = (Admin) user;
             userMap.put("id", admin.getNanoId());
-            userMap.put("firstname", admin.getFirstname());
-            userMap.put("lastname", admin.getLastname());
             userMap.put("email", admin.getEmail());
+            userMap.put("phone", admin.getMobileNumber());
             userMap.put("public_key", admin.getPublicKey());
             userMap.put("status", admin.getStatus());
             userMap.put("isVerified", admin.getIsVerified());
-            userMap.put("projects", admin.getProjects());
-            userMap.put("type", "Admin");
+            
+            // Get roles for this specific project
+            List<String> roles = Collections.emptyList();
+            if (admin.getProjects() != null) {
+                roles = admin.getProjects().stream()
+                        .filter(p -> p.getProjectId().equals(projectId))
+                        .findFirst()
+                        .map(Admin.ProjectRole::getRoles)
+                        .orElse(Collections.emptyList())
+                        .stream()
+                        .filter(role -> role != null && !role.trim().isEmpty() && !role.equalsIgnoreCase("null"))
+                        .collect(Collectors.toList());
+            }
+            userMap.put("roles", roles);
+            
+            payload.put("userType", "Admin");
         }
         
         payload.put("user", userMap);
@@ -223,7 +256,7 @@ public class CallbackService {
         
         // Add API key to header if configured
         if (project.getCallbacks().getApiKeyDestination() != null &&
-            "header".equals(project.getCallbacks().getApiKeyDestination().getValue())) {
+            "header".equalsIgnoreCase(project.getCallbacks().getApiKeyDestination().getValue())) {
             headers.put(project.getCallbacks().getApiKeyName(), 
                        project.getCallbacks().getApiKey());
         }

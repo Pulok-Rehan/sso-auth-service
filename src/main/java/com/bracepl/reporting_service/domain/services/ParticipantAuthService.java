@@ -14,6 +14,7 @@ import com.bracepl.reporting_service.adapter.out.service.OtpClient;
 import com.bracepl.reporting_service.application.dtos.LoginRequest;
 import com.bracepl.reporting_service.application.dtos.ParticipantLoginResponse;
 import com.bracepl.reporting_service.application.dtos.ParticipantRegistrationRequest;
+import com.bracepl.reporting_service.application.dtos.UserInfoResponse;
 import com.bracepl.reporting_service.application.model.*;
 import com.bracepl.reporting_service.application.utils.JwtUtil;
 import com.bracepl.reporting_service.application.utils.NanoIdGenerator;
@@ -104,7 +105,7 @@ public class ParticipantAuthService {
         // 3. Add project with role from auth session
         Participant.ProjectRole projectRole = new Participant.ProjectRole();
         projectRole.setProjectId(authSession.getProjectId());
-        projectRole.setRoles(Collections.singletonList(authSession.getRole()));
+        projectRole.setRoles(Collections.singletonList("participant"));
         participant.setProjects(Collections.singletonList(projectRole));
         String tempPassword = this.generateTemporaryPassword();
         log.info("TEMPORARY PASSWORD: {}", tempPassword);
@@ -150,6 +151,61 @@ public class ParticipantAuthService {
         }
     }
 
+    @Transactional
+    public void logout(String userId, String userTypeStr) {
+        log.info("Logging out user: {} type: {}", userId, userTypeStr);
+        UserType userType = UserType.fromValue(userTypeStr);
+
+        switch (userType) {
+            case PARTICIPANT:
+                Participant participant = participantRepository.findByNanoId(userId)
+                        .orElseThrow(() -> new NotFoundException("User not found"));
+                participant.setPublicKey(PublicKeyGenerator.generate());
+                participantRepository.save(participant);
+                break;
+            case MODERATOR:
+                Moderator moderator = moderatorRepository.findByNanoId(userId)
+                        .orElseThrow(() -> new NotFoundException("User not found"));
+                moderator.setPublicKey(PublicKeyGenerator.generate());
+                moderatorRepository.save(moderator);
+                break;
+            case ADMIN:
+            case SUPERADMIN:
+                Admin admin = adminRepository.findByNanoId(userId)
+                        .orElseThrow(() -> new NotFoundException("User not found"));
+                admin.setPublicKey(PublicKeyGenerator.generate());
+                adminRepository.save(admin);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid user type");
+        }
+        log.info("User logged out successfully (public key rotated): {}", userId);
+    }
+
+    public UserInfoResponse getUserInfo(String username, String userTypeStr) {
+        log.info("Fetching user info for: {} type: {}", username, userTypeStr);
+        UserType userType = UserType.fromValue(userTypeStr);
+        String normalizedUsername = username.toLowerCase();
+
+        switch (userType) {
+            case PARTICIPANT:
+                Participant participant = participantRepository.findActiveByUsername(normalizedUsername)
+                        .orElseThrow(() -> new NotFoundException("User not found"));
+                return new UserInfoResponse(participant.getEmail(), participant.getMobileNumber());
+            case MODERATOR:
+                Moderator moderator = moderatorRepository.findActiveByUsername(normalizedUsername)
+                        .orElseThrow(() -> new NotFoundException("User not found"));
+                return new UserInfoResponse(moderator.getEmail(), moderator.getMobileNumber());
+            case ADMIN:
+            case SUPERADMIN:
+                Admin admin = adminRepository.findActiveByUsername(normalizedUsername)
+                        .orElseThrow(() -> new NotFoundException("User not found"));
+                return new UserInfoResponse(admin.getEmail(), admin.getMobileNumber());
+            default:
+                throw new IllegalArgumentException("Invalid user type");
+        }
+    }
+
     private ParticipantLoginResponse loginParticipant(LoginRequest request, AuthSession authSession, LoginAttempt loginAttempt) {
         Participant participant = participantRepository.findActiveByUsername(request.getUsername())
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -158,7 +214,7 @@ public class ParticipantAuthService {
 
         // Check First Time Login
         if (loginAttempt.isFirstLogin()) {
-            participant.setPassword(passwordHasher.hash("Bracepl@123"));
+            participant.setPassword(passwordHasher.hash("Beplsso@2026"));
             participantRepository.save(participant);
             throw new FirstTimeLogin("You need to reset your password");
         }
@@ -431,6 +487,9 @@ public class ParticipantAuthService {
 
         log.info("User reset password attempt: {}", request.getUsername());
         ResetPasswordResponse resetPasswordResponse = new ResetPasswordResponse();
+        
+        // Normalize username
+        String username = request.getUsername().toLowerCase();
 
         if (request.getUserType().equalsIgnoreCase("Participant")){
             Participant participant = participantRepository.findActiveByUsername(request.getUsername())
@@ -454,11 +513,14 @@ public class ParticipantAuthService {
             // Hash and update password
             String newHashedPassword = passwordHasher.hash(request.getNewPassword());
             participant.setPassword(newHashedPassword);
+            
+            // Rotate public key
+            participant.setPublicKey(PublicKeyGenerator.generate());
 
             participantRepository.save(participant);
 
             // Update first login flag
-            LoginAttempt attempt = loginAttemptService.getOrCreate(request.getUsername());
+            LoginAttempt attempt = loginAttemptService.getOrCreate(username);
             if (attempt.isFirstLogin()) {
                 loginAttemptService.setFirstTimeLoginFalse(attempt);
             }
@@ -490,11 +552,14 @@ public class ParticipantAuthService {
             // Hash and update password
             String newHashedPassword = passwordHasher.hash(request.getNewPassword());
             moderator.setPassword(newHashedPassword);
+            
+            // Rotate public key
+            moderator.setPublicKey(PublicKeyGenerator.generate());
 
             moderatorRepository.save(moderator);
 
             // Update first login flag
-            LoginAttempt attempt = loginAttemptService.getOrCreate(request.getUsername());
+            LoginAttempt attempt = loginAttemptService.getOrCreate(username);
             if (attempt.isFirstLogin()) {
                 loginAttemptService.setFirstTimeLoginFalse(attempt);
             }
@@ -512,16 +577,20 @@ public class ParticipantAuthService {
                     });
             if (!passwordHasher.verify(request.getOldPassword(), admin.getPassword())) {
                 log.warn("Invalid password for User: {}", request.getUsername());
-                throw new InvalidCredentialsException("Invalid email or password");
+                throw new UnauthorizedException("Invalid email or password");
             }
             
             // Update password for admin
             String newHashedPassword = passwordHasher.hash(request.getNewPassword());
             admin.setPassword(newHashedPassword);
+            
+            // Rotate public key
+            admin.setPublicKey(PublicKeyGenerator.generate());
+            
             adminRepository.save(admin);
             
             // Update first login flag for admin too
-            LoginAttempt attempt = loginAttemptService.getOrCreate(request.getUsername());
+            LoginAttempt attempt = loginAttemptService.getOrCreate(username);
             if (attempt.isFirstLogin()) {
                 loginAttemptService.setFirstTimeLoginFalse(attempt);
             }
@@ -535,6 +604,9 @@ public class ParticipantAuthService {
             AuthSession authSession) {
 
         log.info("OTP based forgot password attempt: {}", request.getEmail());
+        
+        // Normalize username
+        String username = request.getEmail().toLowerCase();
 
         // ================= PARTICIPANT =================
         if (request.getUserType().equalsIgnoreCase("Participant")) {
@@ -570,6 +642,10 @@ public class ParticipantAuthService {
             String hashedPassword = passwordHasher.hash(tempPassword);
 
             participant.setPassword(hashedPassword);
+            
+            // Rotate public key
+            participant.setPublicKey(PublicKeyGenerator.generate());
+
             participantRepository.save(participant);
 
             // -------- STEP 5 : RESET LOGIN ATTEMPTS --------

@@ -8,6 +8,9 @@ import com.bracepl.reporting_service.application.dtos.ProjectDto;
 import com.bracepl.reporting_service.application.model.CallbackAction;
 import com.bracepl.reporting_service.application.model.Participant;
 import com.bracepl.reporting_service.application.model.Project;
+import com.bracepl.reporting_service.application.utils.NanoIdGenerator;
+import com.bracepl.reporting_service.application.utils.PasswordHasher;
+import com.bracepl.reporting_service.application.utils.PublicKeyGenerator;
 import com.bracepl.reporting_service.application.utils.exceptions.ConflictException;
 import com.bracepl.reporting_service.application.utils.exceptions.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,7 +38,54 @@ public class ParticipantService {
     private final ParticipantRepository participantRepository;
     private final ProjectRepository projectRepository;
     private final CallbackService callbackService;
+    private final NanoIdGenerator nanoIdGenerator;
+    private final PasswordHasher passwordHasher;
     
+    @Transactional
+    public Participant createParticipant(ParticipantController.ParticipantCreateRequest request) {
+        log.info("Creating participant: {}", request.getEmail());
+        
+        // Check email uniqueness
+        if (participantRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Participant with this email already exists");
+        }
+        if (participantRepository.existsByMobileNumber(request.getMobileNumber())) {
+            throw new ConflictException("Participant with this mobile number already exists");
+        }
+        
+        // Verify project exists
+        projectRepository.findByNanoIdAndStatusTrue(request.getProjectId())
+                .orElseThrow(() -> new NotFoundException("Project not found or inactive"));
+        
+        Participant participant = new Participant();
+        participant.setPublicKey(PublicKeyGenerator.generate());
+        participant.setNanoId(generateUniqueParticipantId());
+        participant.setEmail(request.getEmail().toLowerCase());
+        participant.setMobileNumber(request.getMobileNumber());
+        // Set password to mobile number by default for admin-created participants
+        //password should be sent to email anad mobilenumber
+        participant.setPassword(passwordHasher.hash(request.getMobileNumber()));
+        participant.setStatus(true);
+        participant.setIsVerified(false);
+        
+        // Add project with role
+        Participant.ProjectRole projectRole = new Participant.ProjectRole();
+        projectRole.setProjectId(request.getProjectId());
+        projectRole.setRoles(Collections.singletonList(request.getRole().toLowerCase()));
+        participant.setProjects(Collections.singletonList(projectRole));
+        
+        participant.setCreatedAt(LocalDateTime.now());
+        participant.setUpdatedAt(LocalDateTime.now());
+        
+        Participant saved = participantRepository.save(participant);
+        
+        // Trigger callback
+        callbackService.notifyProjectCallbacks(CallbackAction.CREATE, saved);
+        
+        log.info("Participant created: {}", saved.getNanoId());
+        return saved;
+    }
+
     public List<ParticipantDto.Response> getAllParticipants() {
         List<Participant> participants = participantRepository.findAll();
 
@@ -78,9 +129,11 @@ public class ParticipantService {
             participantRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Participant with this email already exists");
         }
-        
-        participant.setFirstname(request.getFirstname());
-        participant.setLastname(request.getLastname());
+        if (!participant.getMobileNumber().equals(request.getMobileNumber()) &&
+                participantRepository.existsByMobileNumber(request.getMobileNumber())) {
+            throw new ConflictException("Participant with this email already exists");
+        }
+        participant.setMobileNumber(request.getMobileNumber());
         participant.setEmail(request.getEmail().toLowerCase());
         participant.setUpdatedAt(LocalDateTime.now());
         
@@ -188,5 +241,13 @@ public class ParticipantService {
                 .createdAt(participant.getCreatedAt())
                 .updatedAt(participant.getUpdatedAt())
                 .build();
+    }
+    
+    private String generateUniqueParticipantId() {
+        String id;
+        do {
+            id = nanoIdGenerator.generate();
+        } while (participantRepository.existsById(id));
+        return id;
     }
 }

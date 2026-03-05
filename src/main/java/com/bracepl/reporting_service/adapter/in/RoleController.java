@@ -207,10 +207,11 @@ public class RoleController {
      * GET /role/{projectId}/roles
      */
     @GetMapping("/{projectId}/roles")
-    public ServiceResponse getAllRoles(
-            Authentication authentication,
-            @PathVariable String projectId,
-            @RequestParam(required = false) String userId) {
+        public ServiceResponse getAllRoles(
+                Authentication authentication,
+                @PathVariable String projectId,
+                @RequestParam(required = false) String userId,
+                @RequestParam(required = false) String userType) { // Added userType
         try {
             Admin admin = (Admin) authentication.getPrincipal();
             log.info("Admin {} fetching roles for project: {}", admin.getNanoId(), projectId);
@@ -218,13 +219,18 @@ public class RoleController {
             var project = projectService.getProject(projectId, admin);
             var roles = project.getAllowedRoles();
 
-            if (userId != null && !userId.isEmpty()) {
-                UserType userType = roleService.getUserType(userId);
+            if (userType != null && !userType.isEmpty()) {
+                // Filter by userType if provided
                 roles = roles.stream()
-                        .filter(role -> userType.getValue().equalsIgnoreCase(role.getUserType()))
+                        .filter(role -> userType.equalsIgnoreCase(role.getUserType()))
+                        .collect(Collectors.toList());
+            } else if (userId != null && !userId.isEmpty()) {
+                // Fallback to userId if userType is not provided
+                UserType foundUserType = roleService.getUserType(userId);
+                roles = roles.stream()
+                        .filter(role -> foundUserType.getValue().equalsIgnoreCase(role.getUserType()))
                         .collect(Collectors.toList());
             }
-
             return new ServiceResponse("Roles retrieved successfully", roles, "200");
         } catch (NotFoundException e) {
             return new ServiceResponse(e.getMessage(), "404");
@@ -293,6 +299,7 @@ public class RoleController {
     @lombok.AllArgsConstructor
     public static class RoleCreateRequest {
         private String name;
+        private String slug;
         private String userType;
     }
     

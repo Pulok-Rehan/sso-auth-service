@@ -2,12 +2,15 @@ package com.bracepl.reporting_service.domain.services;
 
 import com.bracepl.reporting_service.adapter.in.entity.LoginAttempt;
 import com.bracepl.reporting_service.adapter.out.interfaces.LoginAttemptRepository;
+import com.bracepl.reporting_service.adapter.out.interfaces.ParticipantRepository;
+import com.bracepl.reporting_service.application.model.Participant;
 import com.bracepl.reporting_service.application.utils.exceptions.NotFoundException;
 import com.bracepl.reporting_service.application.utils.exceptions.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +19,7 @@ public class LoginAttemptService {
     private static final int MAX_ATTEMPTS = 4;
 
     private final LoginAttemptRepository repository;
+    private final ParticipantRepository participantRepository;
 
     public LoginAttempt getOrCreate(String username) {
         return repository.findByUsername(username)
@@ -57,13 +61,25 @@ public class LoginAttemptService {
     }
 
     public void unblock(String username, String mobileNumber) {
-        LoginAttempt attempt = repository.findActiveByUsername(username, mobileNumber)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        Optional<Participant> participant = participantRepository.findByUsername(username);
+        if (participant.isEmpty()){
+            throw new NotFoundException("User not found");
 
-        attempt.setBlocked(false);
-        attempt.setFailedAttempts(0);
-        attempt.setBlockedAt(null);
-        repository.save(attempt);
+        }
+        if (participant.get().getStatus()){
+            participant.get().setStatus(false);
+        }
+        else {
+            LoginAttempt attempt = repository.findActiveByUsername(participant.get().getEmail(), participant.get().getMobileNumber())
+                    .orElseThrow(() -> new NotFoundException("User have not logged in yet"));
+
+            attempt.setBlocked(false);
+            attempt.setFailedAttempts(0);
+            attempt.setBlockedAt(null);
+            repository.save(attempt);
+            participant.get().setStatus(true);
+        }
+        participantRepository.save(participant.get());
     }
 
     public void setFirstTimeLoginFalse(LoginAttempt loginAttempt){

@@ -231,7 +231,7 @@ public class ModeratorController {
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
     public static class ModeratorUpdateRequest {
-        private String firstname;
+        private String mobileNumber;
         private String email;
     }
 

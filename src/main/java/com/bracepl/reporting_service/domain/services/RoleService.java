@@ -25,6 +25,7 @@ public class RoleService {
     private final AdminRepository adminRepository;
     private final ParticipantRepository participantRepository;
     private final ModeratorRepository moderatorRepository;
+    private final ProjectService projectService;
 
     @Transactional
     public void assignRole(Admin assigningAdmin, String userId, String userTypeStr, String projectId, String roleSlug) {
@@ -66,6 +67,19 @@ public class RoleService {
             default:
                 throw new IllegalArgumentException("Unsupported user type for role unassignment");
         }
+    }
+
+    @Transactional
+    public void deleteRole(String projectId, String roleSlug, Admin admin) {
+        // 1. Delete role from project definition
+        projectService.deleteRole(projectId, roleSlug, admin);
+
+        // 2. Remove role from all users
+        adminRepository.removeRoleFromAllUsers(projectId, roleSlug);
+        participantRepository.removeRoleFromAllUsers(projectId, roleSlug);
+        moderatorRepository.removeRoleFromAllUsers(projectId, roleSlug);
+        
+        log.info("Role {} deleted from project {} and removed from all users", roleSlug, projectId);
     }
 
     private void checkAuthorization(Admin assigningAdmin, UserType targetUserType, String projectId) {
